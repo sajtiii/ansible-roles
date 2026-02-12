@@ -1,0 +1,76 @@
+{{ ansible_managed | comment }}
+networks:
+  monitoring:
+    name: monitoring
+    internal: true
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.150.0/24
+          gateway: 192.168.150.254
+
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time={{ monitoring.config.retention.time | mandatory }}"
+    user: "65534:899"
+    container_name: {{ monitoring.container_name | mandatory }}
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+        limits:
+          cpus: "1"
+          memory: 512M
+    networks:
+      - default
+      - monitoring
+    extra_hosts:
+      - "host-machine:192.168.150.254"
+    ports:
+      - "{{ monitoring.config.port | default(9090) }}:9090"
+    environment:
+      - "TZ=${TZ}"
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/srv/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+    tmpfs:
+      - "/prometheus,mode=755,uid=65534,gid=65534"
+  
+
+{% if traefik.cert_dumper.enabled %}
+  traefik-certs-dumper:
+    image: ldez/traefik-certs-dumper:latest
+    container_name: {{ traefik.container_name }}-certs-dumper
+    entrypoint: sh -c '
+      while ! [ -e /certs/acme.json ]
+      || ! [ `jq ".[] | .Certificates | length" /certs/acme.json | jq -s "add" ` != 0 ]; do
+      sleep 1
+      ; done
+      && traefik-certs-dumper file --version v3 --watch --domain-subdir=true
+        --source /certs/acme.json --dest /certs/dumps --post-hook "sh /hook.sh"'
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.01"
+          memory: 8M
+        limits:
+          cpus: "0.05"
+          memory: 16M
+    restart: unless-stopped
+    network_mode: "none"
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/srv/traefik/certs:/certs"
+      - "./generate-tls.sh:/hook.sh"
+{% endif %}

@@ -1,0 +1,17 @@
+- name: Configure cert sumper for Traefik
+  when: traefik.cert_dumper.enabled
+  block:
+    - name: Make sure Traefik directory /srv/traefik exists
+      ansible.builtin.file:
+        path: "/srv/traefik"
+        state: directory
+    - name: Copy cert-extractor script for Traefik
+      ansible.builtin.template:
+        src: "cert-extractor.sh.j2"
+        dest: "/srv/traefik/cert-extractor.sh"
+        mode: '0755'
+- ansible.builtin.include_role:
+    name: base-service
+  vars:
+    name: traefik
+    enabled: "{{ traefik.enabled }}"

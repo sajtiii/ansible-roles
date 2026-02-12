@@ -1,0 +1,3 @@
+#!/bin/sh
+
+docker run -v "$(pwd):/project" ghcr.io/google/yamlfmt:latest .

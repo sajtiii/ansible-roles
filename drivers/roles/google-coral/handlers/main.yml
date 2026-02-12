@@ -1,0 +1,5 @@
+- name: Reload udev rules
+  listen: reload udev rules
+  ansible.builtin.command: udevadm control --reload-rules && udevadm trigger
+  when:
+    - not ansible_check_mode

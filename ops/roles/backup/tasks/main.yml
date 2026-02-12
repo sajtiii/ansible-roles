@@ -1,0 +1,45 @@
+- name: Ensure Restic is installed
+  ansible.builtin.package:
+    name: restic
+    state: latest
+- name: Ensure python-paramiko is present
+  ansible.builtin.apt:
+    name: python3-paramiko
+    state: latest
+- name: Ensure Backup script is installed
+  ansible.builtin.copy:
+    src: backup.sh
+    dest: /usr/local/bin/backup.sh
+    mode: "0755"
+- name: Create restic folder
+  ansible.builtin.file:
+    path: /etc/restic
+    state: directory
+    mode: "0700"
+- name: Create restic encryption_key file
+  ansible.builtin.copy:
+    content: "{{ backup.encryption_key | mandatory }}"
+    dest: /etc/restic/encryption_key
+    mode: "0600"
+- name: Create private key file
+  when: backup.repository.sftp is defined
+  ansible.builtin.copy:
+    content: "{{ backup.repository.sftp.private_key | mandatory }}"
+    dest: /etc/restic/id_rsa
+    mode: "0600"
+- name: Create SSH configuration for backup user
+  when: backup.repository.sftp is defined
+  community.general.ssh_config:
+    user: root
+    host: restic-backup-host
+    hostname: "{{ backup.repository.sftp.hostname | mandatory }}"
+    port: "{{ backup.repository.sftp.port | default(22) }}"
+    remote_user: "{{ backup.repository.sftp.user | mandatory }}"
+    identity_file: /etc/restic/id_rsa
+- name: Add backup script to crontab
+  with_items: "{{ backup.folders | mandatory }}"
+  ansible.builtin.cron:
+    name: backup
+    minute: 0
+    hour: 3
+    job: "/usr/local/bin/backup.sh \"{{ item }}\" \"sftp://restic-backup-host/{{ backup.repository.base_path | mandatory }}/{{ inventory_hostname }}{{ item }}\" > /dev/null 2>&1"

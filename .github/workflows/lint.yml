@@ -1,0 +1,17 @@
+name: YAML Formatting
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/google/yamlfmt:latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run yamlfmt
+        run: yamlfmt -lint .

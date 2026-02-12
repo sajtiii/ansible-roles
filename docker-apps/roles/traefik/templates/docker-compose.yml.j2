@@ -1,0 +1,117 @@
+{{ ansible_managed | comment }}
+{% set monitoring = traefik.metrics.enabled and (monitoring.enabled | default(false)) %}
+networks:
+  web:
+    name: web
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+{% if monitoring %}
+  monitoring:
+    external: true
+{% endif %}
+
+
+services:
+  traefik:
+    image: traefik:v3
+    container_name: {{ traefik.container_name }}
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    networks:
+      - default
+      - web
+{% if monitoring %}
+      - monitoring
+{% endif %}
+    ports:
+      - "80:80/tcp"
+      - "443:443/tcp"
+      - "443:443/udp"
+      - "8080:8080/tcp"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 5s
+      start_period: 10s
+      timeout: 1s
+      retries: 3
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      # Entrypoints
+      - "--entryPoints.http.address=:80"
+      - "--entryPoints.https.address=:443"
+      - "--entryPoints.traefik.address=:8080"
+{% if monitoring %}
+      - "--entrypoints.metrics.address=:9200"
+{% endif %}
+      - "--entrypoints.http.http.redirections.entryPoint.to=https"
+      - "--entrypoints.http.http.redirections.entryPoint.scheme=https"
+      # API & Ping
+      - "--api=true"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--ping=true"
+      # SSL
+      - "--certificatesresolvers.le.acme.email={{ traefik.config.letsencrypt.email | mandatory }}"
+      - "--certificatesresolvers.le.acme.storage=/certs/acme.json"
+      - "--entrypoints.https.http.tls.certResolver=le"
+      - "--certificatesresolvers.le.acme.dnschallenge.provider=cloudflare"
+{% if monitoring %}
+      # Metrics
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.addEntryPointsLabels=true"
+      - "--metrics.prometheus.addrouterslabels=true"
+      - "--metrics.prometheus.addServicesLabels=true"
+      - "--metrics.prometheus.entrypoint=metrics"
+{% endif %}
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/srv/traefik/certs:/certs"
+    environment:
+      - "CF_DNS_API_TOKEN={{ traefik.config.letsencrypt.cloudflare.token | mandatory }}"
+{% if monitoring %}
+    labels:
+      - "prometheus.io/scrape=true"
+      - "prometheus.io/port=9200"
+{% endif %}
+
+{% if traefik.cert_dumper.enabled %}
+  traefik-certs-dumper:
+    image: ldez/traefik-certs-dumper:latest
+    container_name: {{ traefik.container_name }}-certs-dumper
+    entrypoint: sh -c '
+      while ! [ -e /certs/acme.json ]
+      || ! [ `jq ".[] | .Certificates | length" /certs/acme.json | jq -s "add" ` != 0 ]; do
+      sleep 1
+      ; done
+      && traefik-certs-dumper file --version v3 --watch --domain-subdir=true
+        --source /certs/acme.json --dest /certs/dumps --post-hook "sh /hook.sh"'
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.01"
+          memory: 8M
+        limits:
+          cpus: "0.05"
+          memory: 16M
+    restart: unless-stopped
+    network_mode: "none"
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/srv/traefik/certs:/certs"
+      - "./generate-tls.sh:/hook.sh"
+{% endif %}

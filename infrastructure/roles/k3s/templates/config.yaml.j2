@@ -1,0 +1,23 @@
+{{ ansible_managed | comment }}
+
+{% if k3s.role in ['master', 'both'] %}
+{% set disabled = [] %}
+{% if not k3s.traefik.enabled %}
+{% set _ = disabled.append('traefik') %}
+{% endif %}
+{% if not k3s.metrics.enabled %}
+{% set _ = disabled.append('metrics-server') %}
+{% endif %}
+{% if disabled %}
+disable:
+{% for item in disabled %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if k3s.role == 'agent' %}
+server: {{ k3s.server | mandatory }}
+{% endif %}
+{% if k3s.token %}
+token: {{ k3s.token }}
+{% endif %}

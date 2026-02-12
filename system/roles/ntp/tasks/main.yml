@@ -1,0 +1,17 @@
+- name: Install Chrony
+  ansible.builtin.apt:
+    name: chrony
+    state: latest
+- name: Copy chrony.conf configuration
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony/chrony.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart chrony
+- name: Ensure chrony is enabled & started
+  ansible.builtin.service:
+    enabled: true
+    name: chrony
+    state: started

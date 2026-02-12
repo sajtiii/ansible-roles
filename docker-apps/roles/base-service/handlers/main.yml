@@ -1,0 +1,6 @@
+- name: "restart docker-service-{{ name }}"
+  ansible.builtin.service:
+    name: "docker-compose@{{ name }}"
+    state: restarted
+  when:
+    - not ansible_check_mode

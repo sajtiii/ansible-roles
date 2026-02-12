@@ -1,0 +1,5 @@
+{
+  {% if (docker.metrics.enabled | mandatory) %}
+  "metrics-addr": "{{ docker.metrics.host }}:{{ docker.metrics.port }}"
+  {% endif %}
+}

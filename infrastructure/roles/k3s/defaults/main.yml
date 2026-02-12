@@ -1,0 +1,8 @@
+k3s:
+  role: master
+  token: ""
+  server: ""
+  metrics:
+    enabled: true
+  traefik:
+    enabled: false

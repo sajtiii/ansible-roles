@@ -1,0 +1,20 @@
+- name: "Create gitops base directory for {{ item.destination | mandatory }}"
+  ansible.builtin.file:
+    path: "{{ item.destination }}"
+    state: directory
+    mode: '0755'
+- name: "Clone git repository for {{ item.destination }}"
+  ansible.builtin.git:
+    repo: "{{ item.url | mandatory }}"
+    dest: "{{ item.destination }}/repository"
+    version: "{{ item.version | default('main') }}"
+    update: false
+  register: git_clone_result
+- name: "Run gitops script once to initialize"
+  when: git_clone_result.changed
+  ansible.builtin.command: "/usr/local/bin/gitops.sh --force-update {{ item.destination }} {{ item.path | default('/') }}"
+- name: "Add gitops script to crontab for {{ item.destination }}"
+  ansible.builtin.cron:
+    name: gitops
+    minute: "*/5"
+    job: "/usr/local/bin/gitops.sh {{ item.destination }} {{ item.path | default('/') }} >> /var/log/gitops.log 2>&1"

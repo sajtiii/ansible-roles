@@ -1,0 +1,5 @@
+- ansible.builtin.include_role:
+    name: base-service
+  vars:
+    name: watchtower
+    enabled: "{{ watchtower.enabled }}"

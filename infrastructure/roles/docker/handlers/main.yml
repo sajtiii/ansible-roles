@@ -1,0 +1,18 @@
+- name: Restart Docker
+  listen: restart docker
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+- name: Restart Docker with IPTables
+  listen: restarted iptables
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+  when:
+    - not ansible_check_mode
+- name: Reload Systemctl Daemon
+  listen: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when:
+    - not ansible_check_mode

@@ -1,0 +1,5 @@
+- ansible.builtin.include_role:
+    name: base-service
+  vars:
+    name: autoheal
+    enabled: "{{ autoheal.enabled }}"

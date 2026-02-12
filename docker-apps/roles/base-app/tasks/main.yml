@@ -1,0 +1,27 @@
+- name: Install & Configure compose application {{ name | title }}
+  when: enabled
+  block:
+    - name: Make sure application directory /srv/{{ name }} exists
+      ansible.builtin.file:
+        path: "/srv/{{ name }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Copy compose file for application {{ name | title }}
+      ansible.builtin.template:
+        src: "docker-compose.yml.j2"
+        dest: "/srv/{{ name }}/docker-compose.yml"
+      notify: "update docker-app-{{ service_name }}"
+- name: Stop compose application {{ service_name | title }}
+  when: not enabled
+  block:
+    - name: Stop Docker Compose application {{ service_name | title }}
+      ansible.builtin.command:
+        cmd: docker compose -f /srv/{{ service_name }}/docker-compose.yml down
+      ignore_errors: true
+    - name: Remove application directory /srv/{{ service_name }}
+      when: cleanup | default(false)
+      ansible.builtin.file:
+        path: "/srv/{{ service_name }}"
+        state: absent

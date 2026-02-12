@@ -1,0 +1,7 @@
+- name: Restart nftables
+  listen: restart nftables
+  ansible.builtin.service:
+    name: nftables
+    state: restarted
+  when:
+    - not ansible_check_mode

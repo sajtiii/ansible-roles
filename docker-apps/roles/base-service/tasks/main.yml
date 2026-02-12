@@ -1,0 +1,28 @@
+- name: Install & configure Docker Compose service for {{ name | title }}
+  when: enabled
+  block:
+    - name: Copy Docker {{ name | title }} compose
+      ansible.builtin.template:
+        src: "docker-compose.yml.j2"
+        dest: "/etc/docker-compose/{{ name }}-compose.yml"
+      notify: "restart docker-service-{{ name }}"
+    - name: Enable Docker {{ name | title }} service
+      ansible.builtin.service:
+        name: "docker-compose@{{ name }}"
+        enabled: true
+        state: started
+- name: Remove Docker {{ name | title }} service if disabled
+  when: not enabled
+  block:
+    - name: Disable Docker {{ name | title }} service
+      ansible.builtin.service:
+        name: "docker-compose@{{ name }}"
+        enabled: false
+        state: stopped
+    - name: Remove Docker {{ name | title }} container if it exists
+      ansible.builtin.command: docker rm -f "{{ container_name }}"
+      ignore_errors: true
+    - name: Remove old Docker {{ name | title }} compose file
+      ansible.builtin.file:
+        path: "/etc/docker-compose/{{ name }}-compose.yml"
+        state: absent

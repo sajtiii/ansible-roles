@@ -1,0 +1,45 @@
+- name: Create k3s config directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+- name: Template k3s configuration
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: restart k3s
+- name: Check if k3s is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: __k3s_is_installed
+- name: Install k3s
+  when: not __k3s_is_installed.stat.exists
+  block:
+    - name: Download k3s install script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s-install.sh
+        mode: "0755"
+    - name: Run k3s install script (server)
+      ansible.builtin.command: /tmp/k3s-install.sh
+      environment:
+        INSTALL_K3S_SKIP_START: "true"
+      when: k3s.role in ['master', 'both']
+    - name: Run k3s install script (agent)
+      ansible.builtin.command: /tmp/k3s-install.sh
+      environment:
+        INSTALL_K3S_EXEC: agent
+        INSTALL_K3S_SKIP_START: "true"
+      when: k3s.role == 'agent'
+    - name: Remove install script
+      ansible.builtin.file:
+        path: /tmp/k3s-install.sh
+        state: absent
+- name: Enable and start k3s service
+  ansible.builtin.service:
+    name: "{{ 'k3s' if k3s.role in ['master', 'both'] else 'k3s-agent' }}"
+    enabled: true
+    state: started

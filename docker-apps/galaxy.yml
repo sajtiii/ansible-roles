@@ -1,0 +1,6 @@
+namespace: sajtii
+name: docker-apps
+version: 1.0.0
+readme: README.md
+authors:
+  - Sajtii

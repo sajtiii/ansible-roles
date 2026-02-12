@@ -1,0 +1,7 @@
+monitoring:
+  enabled: true
+  container_name: prometheus-federator
+  config:
+    port: 9090
+    retention:
+      time: "14d"

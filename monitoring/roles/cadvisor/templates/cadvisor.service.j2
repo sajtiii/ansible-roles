@@ -1,0 +1,11 @@
+{{ ansible_managed | comment }}
+
+[Unit]
+Description=Cadvisor Server
+
+[Service]
+#User=root
+ExecStart=/opt/cadvisor/cadvisor --listen_ip {{ cadvisor.host | mandatory }} --port {{ cadvisor.port | mandatory }}
+
+[Install]
+WantedBy=multi-user.target

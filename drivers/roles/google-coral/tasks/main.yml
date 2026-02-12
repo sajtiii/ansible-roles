@@ -1,0 +1,35 @@
+- name: Add Coral Edge TPU apt key
+  ansible.builtin.get_url:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    dest: /etc/apt/keyrings/coral-edgetpu.gpg
+    mode: "0644"
+- name: Add Coral Edge TPU repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/coral-edgetpu.list
+    content: "deb [signed-by=/etc/apt/keyrings/coral-edgetpu.gpg] https://packages.cloud.google.com/apt coral-edgetpu-stable main"
+- name: Install gasket driver and Edge TPU runtime
+  ansible.builtin.package:
+    update_cache: true
+    name:
+      - gasket-dkms
+      - "libedgetpu1-{{ google_coral.runtime | mandatory }}"
+    state: latest
+- name: Add Coral udev rule
+  ansible.builtin.copy:
+    dest: /etc/udev/rules.d/65-apex.rules
+    content: 'SUBSYSTEM=="apex", MODE="0660", GROUP="apex"'
+    mode: "0644"
+  notify: reload udev rules
+- name: Ensure apex group exists
+  ansible.builtin.group:
+    name: apex
+    state: present
+- name: Check if k3s is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: __k3s_installed
+- name: Label k3s node with Coral TPU capability
+  ansible.builtin.command:
+    cmd: k3s kubectl label node {{ ansible_hostname }} hardware/coral-tpu=true --overwrite
+  when: __k3s_installed.stat.exists
+  changed_when: false
