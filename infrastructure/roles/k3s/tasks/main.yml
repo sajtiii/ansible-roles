@@ -27,7 +27,7 @@
       ansible.builtin.command: /tmp/k3s-install.sh
       environment:
         INSTALL_K3S_SKIP_START: "true"
-      when: k3s.role in ['master', 'both']
+      when: k3s.role in ['both', 'etcd', 'control-plane']
     - name: Run k3s install script (agent)
       ansible.builtin.command: /tmp/k3s-install.sh
       environment:
@@ -40,6 +40,6 @@
         state: absent
 - name: Enable and start k3s service
   ansible.builtin.service:
-    name: "{{ 'k3s' if k3s.role in ['master', 'both'] else 'k3s-agent' }}"
+    name: "{{ 'k3s-agent' if k3s.role == 'agent' else 'k3s' }}"
     enabled: true
     state: started

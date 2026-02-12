@@ -1,6 +1,24 @@
 {{ ansible_managed | comment }}
 
-{% if k3s.role in ['master', 'both'] %}
+{% set is_server = k3s.role in ['both', 'etcd', 'control-plane'] %}
+{% if k3s.cluster_init and k3s.role in ['both', 'etcd'] %}
+cluster-init: true
+{% endif %}
+{% if k3s.role == 'etcd' %}
+disable-apiserver: true
+disable-controller-manager: true
+disable-scheduler: true
+{% endif %}
+{% if k3s.role == 'control-plane' %}
+disable-etcd: true
+{% endif %}
+{% if k3s.role in ['agent', 'control-plane'] or (is_server and not k3s.cluster_init) %}
+server: {{ k3s.server | mandatory }}
+{% endif %}
+{% if k3s.token %}
+token: {{ k3s.token }}
+{% endif %}
+{% if k3s.role in ['both', 'control-plane'] %}
 {% set disabled = [] %}
 {% if not k3s.traefik.enabled %}
 {% set _ = disabled.append('traefik') %}
@@ -14,10 +32,4 @@ disable:
   - {{ item }}
 {% endfor %}
 {% endif %}
-{% endif %}
-{% if k3s.role == 'agent' %}
-server: {{ k3s.server | mandatory }}
-{% endif %}
-{% if k3s.token %}
-token: {{ k3s.token }}
 {% endif %}

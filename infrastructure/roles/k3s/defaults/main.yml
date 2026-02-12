@@ -1,5 +1,6 @@
 k3s:
-  role: master
+  role: both
+  cluster_init: false
   token: ""
   server: ""
   metrics:
