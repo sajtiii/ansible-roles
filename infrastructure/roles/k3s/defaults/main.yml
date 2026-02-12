@@ -4,6 +4,6 @@ k3s:
   token: ""
   server: ""
   metrics:
-    enabled: true
+    enabled: false
   traefik:
     enabled: false
