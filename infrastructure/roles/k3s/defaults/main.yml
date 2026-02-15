@@ -39,10 +39,12 @@ k3s:
   # API server configuration
   api_server:
     # Bind address for API server
-    # Use IPv4 address of control plane node for IPv4 access
+    # Leave empty to bind to all interfaces (recommended)
+    # Setting this can prevent k3s from binding to loopback (127.0.0.1) which breaks internal communication
     bind_address: ""
 
     # Advertise address for API server (should be IPv4 for external access)
+    # This tells other nodes how to reach this API server
     advertise_address: ""
 
   # Additional configuration options (can be set per-host in inventory)

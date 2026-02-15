@@ -99,6 +99,13 @@ Error: service IP family "10.43.0.0/16" must match public address family "2a01:4
 
 It means you need to swap the CIDR order to put IPv6 first.
 
+**Another common error**:
+```
+dial tcp 127.0.0.1:6444: connect: connection refused
+```
+
+This means the API server can't bind to the loopback interface. **Solution**: Don't set `api_server.bind_address` - let k3s bind to all interfaces automatically (including loopback for internal communication).
+
 ### Step 2: Run Playbook
 
 ```bash

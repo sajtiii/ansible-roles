@@ -75,7 +75,7 @@ all:
 
           # API server configuration (IPv4 for external access)
           api_server:
-            bind_address: "0.0.0.0"
+            # Don't set bind_address - let k3s bind to all interfaces (including loopback)
             advertise_address: "203.0.113.1"
 
           # Traefik and metrics disabled (handled externally)

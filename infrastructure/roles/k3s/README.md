@@ -228,7 +228,7 @@ k3s:
     masquerade: true
 
   api_server:
-    bind_address: "0.0.0.0"  # IPv4 API server
+    # Don't set bind_address - k3s will bind to all interfaces automatically
     advertise_address: "203.0.113.1"  # IPv4 control plane address
 
   traefik:
