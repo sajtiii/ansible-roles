@@ -19,8 +19,8 @@ k3s:
     node_external_ip: ""   # External IP for this node (auto-detected if empty)
   ipv6:
     enabled: false         # Enable IPv6 dual-stack networking
-    cluster_cidr: "10.42.0.0/16,2001:db8:42::/56"  # Dual-stack cluster CIDR
-    service_cidr: "10.43.0.0/16,2001:db8:43::/112" # Dual-stack service CIDR
+    cluster_cidr: "10.42.0.0/16,fd00:42::/56"  # Dual-stack cluster CIDR (ULA)
+    service_cidr: "10.43.0.0/16,fd00:43::/112" # Dual-stack service CIDR (ULA)
     node_cidr_mask_size_ipv4: 24  # IPv4 CIDR mask size for node allocation
     node_cidr_mask_size_ipv6: 64  # IPv6 CIDR mask size for node allocation
     masquerade: false      # Enable IPv6 NAT (useful for ULA ranges)
@@ -108,14 +108,20 @@ k3s:
   cluster_init: true
   ipv6:
     enabled: true
-    cluster_cidr: "10.42.0.0/16,2001:db8:42::/56"
-    service_cidr: "10.43.0.0/16,2001:db8:43::/112"
-    node_ip: "2001:db8::1,192.0.2.1"  # IPv6 first for dual-stack
+    cluster_cidr: "10.42.0.0/16,fd00:42::/56"
+    service_cidr: "10.43.0.0/16,fd00:43::/112"
+    node_ip: "2001:db8::1,192.0.2.1"  # IPv6 first (use your actual IPv6)
 ```
 
 **Important considerations:**
+- **IP Ranges**: Use private ranges for cluster/service CIDRs:
+  - IPv4: `10.0.0.0/8`, `172.16.0.0/12`, or `192.168.0.0/16`
+  - IPv6: `fd00::/8` (ULA - Unique Local Addresses) for internal cluster networking
+- **Node IPs**: Use your actual node IPs (public or private depending on your setup):
+  - Public IPv6 from cloud provider (e.g., `2001:db8::/32` in examples)
+  - Or ULA if using private networking only
 - When IPv6 is the primary family, explicitly set `node_ip` with IPv6 address first
-- If using non-routable IPv6 (ULA range), enable `masquerade: true` for IPv6 NAT
+- If using non-routable IPv6 (ULA range), enable `masquerade: true` for IPv6 NAT to access external services
 - If IPv6 default route is set by router advertisement (RA), set sysctl: `net.ipv6.conf.all.accept_ra=2`
 - All server nodes must use the same `cluster_cidr` and `service_cidr` values
 
@@ -143,7 +149,7 @@ k3s:
     node_external_ip: "2001:db8::1"  # Can use IPv6 as external IP
   ipv6:
     enabled: true
-    cluster_cidr: "10.42.0.0/16,2001:db8:42::/56"
-    service_cidr: "10.43.0.0/16,2001:db8:43::/112"
+    cluster_cidr: "10.42.0.0/16,fd00:42::/56"
+    service_cidr: "10.43.0.0/16,fd00:43::/112"
     node_ip: "2001:db8::1,192.0.2.1"
 ```
