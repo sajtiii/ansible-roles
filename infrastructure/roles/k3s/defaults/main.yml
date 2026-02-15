@@ -7,3 +7,14 @@ k3s:
     enabled: false
   traefik:
     enabled: false
+  wireguard:
+    enabled: false
+    node_external_ip: ""  # Optional: external IP for this node (auto-detected if empty)
+  ipv6:
+    enabled: false
+    cluster_cidr: "10.42.0.0/16,2001:db8:42::/56"
+    service_cidr: "10.43.0.0/16,2001:db8:43::/112"
+    node_cidr_mask_size_ipv4: 24
+    node_cidr_mask_size_ipv6: 64
+    masquerade: false  # Enable IPv6 NAT for ULA ranges
+    node_ip: ""  # Optional: explicitly set node IP (IPv6 first for dual-stack)
