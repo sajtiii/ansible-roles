@@ -223,8 +223,8 @@ k3s:
   ipv6:
     enabled: true
     dual_stack: true
-    cluster_cidr: "10.42.0.0/16,fd00:42::/56"  # Dual-stack pods
-    service_cidr: "10.43.0.0/16,fd00:43::/112"  # Dual-stack services
+    cluster_cidr: "fd00:42::/56,10.42.0.0/16"  # Dual-stack pods (IPv6 first)
+    service_cidr: "fd00:43::/112,10.43.0.0/16"  # Dual-stack services (IPv6 first)
     masquerade: true
 
   api_server:

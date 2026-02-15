@@ -82,6 +82,23 @@ Edit `inventory.yml` and update:
        advertise_address: "YOUR_FIRST_SERVER_IPV4"
    ```
 
+### Important: CIDR Ordering
+
+**Critical requirement**: The **first IP family in cluster-cidr and service-cidr must match your node's primary address family**.
+
+For Hetzner servers with IPv6 as the primary address:
+```yaml
+cluster_cidr: "fd00:42::/56,10.42.0.0/16"  # IPv6 first!
+service_cidr: "fd00:43::/112,10.43.0.0/16"  # IPv6 first!
+```
+
+If you get this error:
+```
+Error: service IP family "10.43.0.0/16" must match public address family "2a01:4f8:..."
+```
+
+It means you need to swap the CIDR order to put IPv6 first.
+
 ### Step 2: Run Playbook
 
 ```bash
@@ -153,8 +170,9 @@ kubectl exec test-pod -- ping6 -c 3 2a01:4f8:1234:5679::1
 ### Pod Networking
 
 1. **Dual-stack CIDRs**:
-   - Pods get both IPv4 (`10.42.0.0/16`) and IPv6 (`fd00:42::/56`) addresses
-   - Services get both IPv4 (`10.43.0.0/16`) and IPv6 (`fd00:43::/112`) addresses
+   - Pods get both IPv6 (`fd00:42::/56`) and IPv4 (`10.42.0.0/16`) addresses
+   - Services get both IPv6 (`fd00:43::/112`) and IPv4 (`10.43.0.0/16`) addresses
+   - **Important**: IPv6 is listed first because Hetzner nodes have IPv6 as their primary address
 
 2. **Traffic Flow**:
    - Pod-to-pod within same node: Direct IPv6

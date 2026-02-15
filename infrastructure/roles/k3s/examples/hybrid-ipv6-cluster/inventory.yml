@@ -63,11 +63,12 @@ all:
             enabled: true
 
           # Dual-stack IPv6 configuration
+          # Note: IPv6 must be first because nodes have IPv6 as primary address
           ipv6:
             enabled: true
             dual_stack: true
-            cluster_cidr: "10.42.0.0/16,fd00:42::/56"
-            service_cidr: "10.43.0.0/16,fd00:43::/112"
+            cluster_cidr: "fd00:42::/56,10.42.0.0/16"
+            service_cidr: "fd00:43::/112,10.43.0.0/16"
             node_cidr_mask_size_ipv4: 24
             node_cidr_mask_size_ipv6: 64
             masquerade: true
