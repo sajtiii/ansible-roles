@@ -3,18 +3,47 @@ k3s:
   cluster_init: false
   token: ""
   server: ""
+
+  # Metrics server (disabled - handled externally)
   metrics:
     enabled: false
+
+  # Traefik ingress controller (disabled - handled externally)
   traefik:
     enabled: false
+
+  # WireGuard native backend for node-to-node IPv6 communication
   wireguard:
-    enabled: false
-    node_external_ip: ""  # Optional: external IP for this node (auto-detected if empty)
+    enabled: true
+
+  # Dual-stack configuration (IPv6 for internal, IPv4 for external on entrypoint nodes)
   ipv6:
-    enabled: false
-    cluster_cidr: "fd00:42::/56,10.42.0.0/16"
-    service_cidr: "fd00:43::/112,10.43.0.0/16"
+    enabled: true
+    dual_stack: true
+
+    # Cluster CIDR for pods (dual-stack: IPv4 and IPv6)
+    cluster_cidr: "10.42.0.0/16,fd00:42::/56"
+
+    # Service CIDR (dual-stack: IPv4 and IPv6)
+    service_cidr: "10.43.0.0/16,fd00:43::/112"
+
+    # Node CIDR mask sizes
     node_cidr_mask_size_ipv4: 24
     node_cidr_mask_size_ipv6: 64
-    masquerade: false  # Enable IPv6 NAT for ULA ranges
-    node_ip: ""  # Optional: explicitly set node IP (IPv6 first for dual-stack)
+
+    # Enable IPv6 masquerading for pod traffic
+    masquerade: true
+
+  # API server configuration
+  api_server:
+    # Bind address for API server
+    # Use IPv4 address of control plane node for IPv4 access
+    bind_address: ""
+
+    # Advertise address for API server (should be IPv4 for external access)
+    advertise_address: ""
+
+  # Additional configuration options (can be set per-host in inventory)
+  # These will be automatically configured based on node type:
+  # - IPv6-only nodes: node_ip will be IPv6 address
+  # - Dual-stack nodes: node_ip will be "ipv6,ipv4" and node_external_ip will be "ipv4,ipv6"

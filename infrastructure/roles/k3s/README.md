@@ -199,3 +199,79 @@ hosts:
 The template will automatically:
 - Set `node-external-ip` from `ipv6_address` (for WireGuard)
 - Build `node-ip` as `ipv6_address,ipv4_address` (for dual-stack)
+
+## Hybrid IPv6 Cluster with IPv4 Entrypoints
+
+For cost-optimized deployments on cloud providers like Hetzner, you can create a hybrid cluster where:
+- **Nodes communicate internally via IPv6** (using WireGuard native backend)
+- **Control plane is accessible via IPv4** for compatibility
+- **Some nodes are IPv6-only** (cheaper), others are dual-stack (IPv4 entrypoints)
+- **Pods/services use dual-stack** (IPv6 internally, accessible via IPv4 externally)
+
+### Example Configuration
+
+```yaml
+k3s:
+  role: both
+  cluster_init: true
+  token: "your-secure-token"
+  server: "https://203.0.113.1:6443"  # IPv4 control plane
+
+  wireguard:
+    enabled: true  # Use wireguard-native for IPv6 node-to-node
+
+  ipv6:
+    enabled: true
+    dual_stack: true
+    cluster_cidr: "10.42.0.0/16,fd00:42::/56"  # Dual-stack pods
+    service_cidr: "10.43.0.0/16,fd00:43::/112"  # Dual-stack services
+    masquerade: true
+
+  api_server:
+    bind_address: "0.0.0.0"  # IPv4 API server
+    advertise_address: "203.0.113.1"  # IPv4 control plane address
+
+  traefik:
+    enabled: false  # Handle ingress externally
+  metrics:
+    enabled: false  # Handle metrics externally
+```
+
+### Inventory Example
+
+```yaml
+# Dual-stack node (IPv4 entrypoint)
+server1.example.com:
+  ansible_host: 203.0.113.1
+  ipv4_address: 203.0.113.1
+  ipv6_address: "2a01:4f8:1234::1"
+  k3s:
+    role: both
+    cluster_init: true
+
+# IPv6-only node (cost-optimized)
+server2.example.com:
+  ansible_host: "2a01:4f8:1234::2"
+  ipv6_address: "2a01:4f8:1234::2"
+  k3s:
+    role: both
+```
+
+### How It Works
+
+1. **Node Communication**: k3s uses `flannel-backend: wireguard-native` which creates encrypted WireGuard tunnels over IPv6 between all nodes
+2. **Node IPs**:
+   - Dual-stack nodes: `node-ip: ipv6,ipv4` (IPv6 preferred for internal)
+   - Dual-stack nodes: `node-external-ip: ipv4,ipv6` (IPv4 preferred for external)
+   - IPv6-only nodes: `node-ip: ipv6` (no external IP configured)
+3. **Control Plane**: API server binds to IPv4 for external access
+4. **Pod Networking**: Pods get both IPv4 and IPv6 addresses
+5. **External Access**: Deploy ingress controllers on dual-stack nodes to handle IPv4 → IPv6 routing
+
+### Complete Example
+
+See [examples/hybrid-ipv6-cluster/](examples/hybrid-ipv6-cluster/) for a complete working example with:
+- 4-node Hetzner cluster (2 IPv6-only, 2 dual-stack)
+- Detailed architecture documentation
+- Troubleshooting guide
+- External access patterns
