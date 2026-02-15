@@ -19,8 +19,8 @@ k3s:
     node_external_ip: ""   # External IP for this node (auto-detected from inventory)
   ipv6:
     enabled: false         # Enable IPv6 dual-stack networking
-    cluster_cidr: "10.42.0.0/16,fd00:42::/56"  # Dual-stack cluster CIDR (ULA)
-    service_cidr: "10.43.0.0/16,fd00:43::/112" # Dual-stack service CIDR (ULA)
+    cluster_cidr: "fd00:42::/56,10.42.0.0/16"  # Dual-stack cluster CIDR (IPv6 first)
+    service_cidr: "fd00:43::/112,10.43.0.0/16" # Dual-stack service CIDR (IPv6 first)
     node_cidr_mask_size_ipv4: 24  # IPv4 CIDR mask size for node allocation
     node_cidr_mask_size_ipv6: 64  # IPv6 CIDR mask size for node allocation
     masquerade: false      # Enable IPv6 NAT (useful for ULA ranges)
@@ -135,6 +135,10 @@ k3s:
 - **IP Ranges**: Use private ranges for cluster/service CIDRs:
   - IPv4: `10.0.0.0/8`, `172.16.0.0/12`, or `192.168.0.0/16`
   - IPv6: `fd00::/8` (ULA - Unique Local Addresses) for internal cluster networking
+- **CIDR Ordering**: The first IP family in CIDRs must match your node's primary address family:
+  - IPv6-primary nodes: Use `fd00:42::/56,10.42.0.0/16` (IPv6 first)
+  - IPv4-primary nodes: Use `10.42.0.0/16,fd00:42::/56` (IPv4 first)
+  - K3s will auto-detect your primary family from the node's public address
 - **Node IPs**: Use your actual node IPs (public or private depending on your setup):
   - Public IPv6 from cloud provider (e.g., `2001:db8::/32` in examples)
   - Or ULA if using private networking only
