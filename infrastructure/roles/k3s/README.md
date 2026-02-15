@@ -16,7 +16,7 @@ k3s:
     enabled: false         # Enable built-in Traefik (both/control-plane only)
   wireguard:
     enabled: false         # Enable WireGuard-based distributed networking
-    node_external_ip: ""   # External IP for this node (auto-detected if empty)
+    node_external_ip: ""   # External IP for this node (auto-detected from inventory)
   ipv6:
     enabled: false         # Enable IPv6 dual-stack networking
     cluster_cidr: "10.42.0.0/16,fd00:42::/56"  # Dual-stack cluster CIDR (ULA)
@@ -24,8 +24,26 @@ k3s:
     node_cidr_mask_size_ipv4: 24  # IPv4 CIDR mask size for node allocation
     node_cidr_mask_size_ipv6: 64  # IPv6 CIDR mask size for node allocation
     masquerade: false      # Enable IPv6 NAT (useful for ULA ranges)
-    node_ip: ""            # Explicitly set node IP (IPv6 first for dual-stack)
+    node_ip: ""            # Explicitly set node IP (auto-detected from inventory)
 ```
+
+### Inventory Variables
+
+You can define these variables in your inventory to automatically populate node IPs:
+
+```yaml
+# Optional: Define IPv6/IPv4 addresses in inventory
+ipv6_address: "2001:db8::1"  # Used for node_external_ip and node_ip
+ipv4_address: "192.0.2.1"    # Used for node_ip (dual-stack)
+
+# Or rely on ansible_host
+ansible_host: 192.0.2.1      # Will be used if ipv4_address not defined
+```
+
+**Auto-detection priority:**
+1. Explicit `k3s.wireguard.node_external_ip` or `k3s.ipv6.node_ip` (highest priority)
+2. Inventory variables: `ipv6_address`, `ipv4_address`
+3. Ansible facts: `ansible_default_ipv6.address`, `ansible_default_ipv4.address`
 
 ## Roles
 
@@ -153,3 +171,27 @@ k3s:
     service_cidr: "10.43.0.0/16,fd00:43::/112"
     node_ip: "2001:db8::1,192.0.2.1"
 ```
+
+### Using Inventory Variables (Recommended)
+
+Instead of hardcoding IPs, define them in your inventory for automatic configuration:
+
+```yaml
+# inventory.yml
+hosts:
+  professor.sajtii.hu:
+    ansible_host: 46.225.87.199
+    ipv6_address: "2a01:4f8:1c19:770d::1"
+    ipv4_address: 46.225.87.199  # Optional, falls back to ansible_host
+    k3s:
+      role: both
+      cluster_init: true
+      wireguard:
+        enabled: true  # Will use ipv6_address for node_external_ip
+      ipv6:
+        enabled: true  # Will build node_ip from ipv6_address,ipv4_address
+```
+
+The template will automatically:
+- Set `node-external-ip` from `ipv6_address` (for WireGuard)
+- Build `node-ip` as `ipv6_address,ipv4_address` (for dual-stack)
