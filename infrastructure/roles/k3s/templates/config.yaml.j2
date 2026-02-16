@@ -1,6 +1,14 @@
 {{ ansible_managed | comment }}
 
-{% set is_server = k3s.role in ['both', 'etcd', 'control-plane'] %}
+# Server config
+{% if k3s.server %}
+server: {{ k3s.server }}
+{% endif %}
+{% if k3s.token %}
+token: {{ k3s.token }}
+{% endif %}
+
+# Node config
 {% if k3s.cluster_init and k3s.role in ['both', 'etcd'] %}
 cluster-init: true
 {% endif %}
@@ -12,13 +20,24 @@ disable-scheduler: true
 {% if k3s.role == 'control-plane' %}
 disable-etcd: true
 {% endif %}
-{% if k3s.role in ['agent', 'control-plane'] or (is_server and not k3s.cluster_init) %}
-server: {{ k3s.server | mandatory }}
+
+# Node labels
+{% if k3s.node_labels %}
+node-label:
+{% for key, value in k3s.node_labels.items() %}
+  - "{{ key }}={{ value }}"
+{% endfor %}
 {% endif %}
-{% if k3s.token %}
-token: {{ k3s.token }}
+
+# Node taints
+{% if k3s.node_taints %}
+node-taint:
+{% for taint in k3s.node_taints %}
+  - "{{ taint }}"
+{% endfor %}
 {% endif %}
-{% if k3s.role in ['both', 'control-plane'] %}
+
+# Disabled services 
 {% set disabled = [] %}
 {% if not k3s.traefik.enabled %}
 {% set _ = disabled.append('traefik') %}
@@ -32,45 +51,51 @@ disable:
   - {{ item }}
 {% endfor %}
 {% endif %}
-{% endif %}
-{% if k3s.wireguard.enabled and is_server %}
+
+# Networking
+{% if k3s.role != 'agent' %}
+{% if k3s.wireguard.enabled %}
 flannel-backend: wireguard-native
-flannel-external-ip: true
 {% endif %}
 {% if k3s.ipv6.enabled %}
-{% if is_server %}
-{# Dual-stack cluster and service CIDRs #}
 cluster-cidr: {{ k3s.ipv6.cluster_cidr }}
 service-cidr: {{ k3s.ipv6.service_cidr }}
-node-cidr-mask-size-ipv4: {{ k3s.ipv6.node_cidr_mask_size_ipv4 }}
-node-cidr-mask-size-ipv6: {{ k3s.ipv6.node_cidr_mask_size_ipv6 }}
-{% if k3s.ipv6.masquerade %}
-flannel-ipv6-masq: true
+kube-controller-manager-arg:
+  - "node-cidr-mask-size-ipv4={{ k3s.ipv6.node_cidr_mask_size_ipv4 }}"
+  - "node-cidr-mask-size-ipv6={{ k3s.ipv6.node_cidr_mask_size_ipv6 }}"
 {% endif %}
-{# API server configuration #}
-{% if k3s.api_server.bind_address %}
-bind-address: {{ k3s.api_server.bind_address }}
+{% if k3s.ipv6.enabled and k3s.ipv6.masquerade %}
+enable-ipv6-masquerade: true
 {% endif %}
 {% if k3s.api_server.advertise_address %}
 advertise-address: {{ k3s.api_server.advertise_address }}
 {% endif %}
+{% if k3s.api_server.tls_san %}
+tls-san:
+{% for san in k3s.api_server.tls_san %}
+  - "{{ san }}"
+{% endfor %}
 {% endif %}
-{# Node IP configuration: IPv6 first for internal cluster communication #}
-{# Format: ipv6,ipv4 (dual-stack) or just ipv6 (IPv6-only nodes) #}
-{% if ipv6_address is defined and ipv4_address is defined %}
+{% endif %}
+
+# Node IPs
+{% if k3s.wireguard.enabled %}
+{% if k3s.wireguard.node_external_ip %}
+node-external-ip: {{ k3s.wireguard.node_external_ip }}
+{% elif ipv4_address is defined and ipv6_address is defined %}
+node-external-ip: {{ ipv4_address }},{{ ipv6_address }}
+{% elif ipv6_address is defined %}
+node-external-ip: {{ ipv6_address }}
+{% elif ipv4_address is defined %}
+node-external-ip: {{ ipv4_address }}
+{% endif %}
+{% endif %}
+{% if k3s.ipv6.enabled %}
+{% if k3s.ipv6.node_ip %}
+node-ip: {{ k3s.ipv6.node_ip }}
+{% elif ipv6_address is defined and ipv4_address is defined %}
 node-ip: {{ ipv6_address }},{{ ipv4_address }}
 {% elif ipv6_address is defined %}
 node-ip: {{ ipv6_address }}
-{% elif ansible_default_ipv6.address is defined and ansible_default_ipv4.address is defined %}
-node-ip: {{ ansible_default_ipv6.address }},{{ ansible_default_ipv4.address }}
-{% elif ansible_default_ipv6.address is defined %}
-node-ip: {{ ansible_default_ipv6.address }}
-{% endif %}
-{# External IP configuration: IPv4 first for external access (only for dual-stack nodes) #}
-{# Format: ipv4,ipv6 for nodes that should be accessible externally via IPv4 #}
-{% if ipv4_address is defined and ipv6_address is defined %}
-node-external-ip: {{ ipv4_address }},{{ ipv6_address }}
-{% elif ipv4_address is defined %}
-node-external-ip: {{ ipv4_address }}
 {% endif %}
 {% endif %}

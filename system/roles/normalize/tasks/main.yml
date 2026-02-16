@@ -2,9 +2,15 @@
   ansible.builtin.hostname:
     name: "{{ hostname | default(inventory_hostname) }}"
 - name: Update hosts file
-  ansible.builtin.template:
-    src: hosts.j2
-    dest: /etc/hosts
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} normalize"
+    block: |
+      127.0.0.1 localhost {{ hostname | default(inventory_hostname + " " + inventory_hostname_short) }}
+
+      ::1 localhost ip6-localhost ip6-loopback {{ hostname | default(inventory_hostname + " " + inventory_hostname_short) }}
+      ff02::1 ip6-allnodes
+      ff02::2 ip6-allrouters
 - name: Update MOTD contents
   ansible.builtin.copy:
     dest: /etc/motd

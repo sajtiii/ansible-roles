@@ -11,7 +11,7 @@
     owner: root
     group: root
     mode: 0644
-  notify: restart unattended-upgrades
+  notify: restart auto-upgrades
 - name: Copy 50unattended-upgrades configuration
   ansible.builtin.template:
     src: 50unattended-upgrades.j2
@@ -19,7 +19,7 @@
     owner: root
     group: root
     mode: 0644
-  notify: restart unattended-upgrades
+  notify: restart auto-upgrades
 - name: Ensure unattended-upgrades are enabled & started
   ansible.builtin.service:
     enabled: true

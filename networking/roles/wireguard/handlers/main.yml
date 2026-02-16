@@ -1,0 +1,7 @@
+- name: Restart wireguard
+  listen: restart wireguard
+  ansible.builtin.service:
+    name: "wg-quick@{{ wireguard.interface }}"
+    state: restarted
+  when:
+    - not ansible_check_mode

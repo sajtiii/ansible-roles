@@ -3,51 +3,35 @@ k3s:
   cluster_init: false
   token: ""
   server: ""
-
-  # Metrics server (disabled - handled externally)
   metrics:
     enabled: false
-
-  # Traefik ingress controller (disabled - handled externally)
   traefik:
     enabled: false
-
-  # WireGuard native backend for node-to-node IPv6 communication
   wireguard:
     enabled: true
-
-  # Dual-stack configuration (IPv6 for internal, IPv4 for external on entrypoint nodes)
+    node_external_ip: ""
   ipv6:
-    enabled: true
-    dual_stack: true
-
-    # Cluster CIDR for pods (dual-stack: IPv6 and IPv4)
-    # IPv6 first because nodes have IPv6 as primary address
+    enabled: false
     cluster_cidr: "fd00:42::/56,10.42.0.0/16"
-
-    # Service CIDR (dual-stack: IPv6 and IPv4)
-    # IPv6 first because nodes have IPv6 as primary address
     service_cidr: "fd00:43::/112,10.43.0.0/16"
-
-    # Node CIDR mask sizes
     node_cidr_mask_size_ipv4: 24
     node_cidr_mask_size_ipv6: 64
-
-    # Enable IPv6 masquerading for pod traffic
-    masquerade: true
-
-  # API server configuration
+    masquerade: false
+    node_ip: ""
   api_server:
-    # Bind address for API server
-    # Leave empty to bind to all interfaces (recommended)
-    # Setting this can prevent k3s from binding to loopback (127.0.0.1) which breaks internal communication
-    bind_address: ""
-
-    # Advertise address for API server (should be IPv4 for external access)
-    # This tells other nodes how to reach this API server
     advertise_address: ""
-
-  # Additional configuration options (can be set per-host in inventory)
-  # These will be automatically configured based on node type:
-  # - IPv6-only nodes: node_ip will be IPv6 address
-  # - Dual-stack nodes: node_ip will be "ipv6,ipv4" and node_external_ip will be "ipv4,ipv6"
+    tls_san: []
+  # Node labels: key-value pairs to label the node
+  # Example:
+  #   node_labels:
+  #     environment: production
+  #     node.kubernetes.io/instance-type: standard
+  #     workload-type: gpu
+  node_labels: {}
+  # Node taints: list of taints in format "key=value:Effect"
+  # Effect can be: NoSchedule, PreferNoSchedule, or NoExecute
+  # Example:
+  #   node_taints:
+  #     - "dedicated=database:NoSchedule"
+  #     - "special=true:PreferNoSchedule"
+  node_taints: []
