@@ -8,7 +8,7 @@ k3s:
   traefik:
     enabled: false
   wireguard:
-    enabled: true
+    enabled: false
     node_external_ip: ""
   ipv6:
     enabled: false
