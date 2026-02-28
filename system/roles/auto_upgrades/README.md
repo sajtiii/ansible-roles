@@ -15,5 +15,4 @@ By default, only security updates are applied automatically.
 | `auto_upgrades.backports` | `false` | Packages from `codename-backports`. |
 | `auto_upgrades.major` | `false` | Full Debian stable repository. |
 | `auto_upgrades.packages.exclude` | `[]` | List of package regex patterns to exclude from upgrades. |
-| `auto_upgrades.cleanup.kernels` | `true` | Remove unused kernel packages after upgrades. |
-| `auto_upgrades.cleanup.dependencies` | `true` | Remove unused dependencies after upgrades (equivalent to `autoremove`). |
+| `auto_upgrades.cleanup` | `true` | Remove unused dependencies after upgrades. |
