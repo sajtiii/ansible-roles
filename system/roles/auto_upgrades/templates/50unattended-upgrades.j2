@@ -11,27 +11,29 @@ Unattended-Upgrade::Origins-Pattern {
 {% if auto_upgrades.backports %}
         "origin=Debian Backports,codename=${distro_codename}-backports,label=Debian Backports";
 {% endif %}
-{% if auto_upgrades.mayor %}
+{% if auto_upgrades.major %}
         "origin=Debian,codename=${distro_codename},label=Debian";
 {% endif %}
 };
 
 Unattended-Upgrade::Package-Blacklist {
-{% for package in auto_upgrades.packages.blacklist %}
+{% for package in auto_upgrades.packages.exclude %}
         "{{ package }}";
 {% endfor %}
 };
 
 Unattended-Upgrade::AutoFixInterruptedDpkg "true";
 Unattended-Upgrade::MinimalSteps "true";
+{% if auto_upgrades.cleanup %}
 Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
 Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
 Unattended-Upgrade::Remove-Unused-Dependencies "true";
+{% endif %}
 Unattended-Upgrade::SyslogEnable "true";
-{% if auto_upgrades.reboot %}
+{% if auto_upgrades.reboot.enabled %}
 Unattended-Upgrade::Automatic-Reboot "true";
 Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
-Unattended-Upgrade::Automatic-Reboot-Time "02:00";
+Unattended-Upgrade::Automatic-Reboot-Time "{{ auto_upgrades.reboot.time }}";
 {% else %}
 Unattended-Upgrade::Automatic-Reboot "false";
 {% endif %}

@@ -1,8 +1,0 @@
-auto_upgrades:
-  reboot: false
-  security: true
-  updates: false
-  backports: false
-  mayor: false
-  packages:
-    blacklist: []
