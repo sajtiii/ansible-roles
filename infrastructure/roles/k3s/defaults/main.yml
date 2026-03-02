@@ -22,7 +22,7 @@ k3s:
     pass_hosts_file: false
   api_server:
     advertise_address: ""
-    tls_san: []
+    additional_tls_sans: []
   # Node labels: key-value pairs to label the node
   # Example:
   #   node_labels:

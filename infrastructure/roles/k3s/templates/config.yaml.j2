@@ -70,9 +70,9 @@ enable-ipv6-masquerade: true
 {% if k3s.api_server.advertise_address %}
 advertise-address: {{ k3s.api_server.advertise_address }}
 {% endif %}
-{% if k3s.api_server.tls_san %}
+{% if k3s.api_server.additional_tls_sans %}
 tls-san:
-{% for san in k3s.api_server.tls_san %}
+{% for san in k3s.api_server.additional_tls_sans %}
   - "{{ san }}"
 {% endfor %}
 {% endif %}
