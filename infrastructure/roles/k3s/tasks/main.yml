@@ -48,13 +48,6 @@
     - k3s.role != 'agent'
     - k3s.dns.pass_hosts_file
   block:
-    - name: Wait for CoreDNS deployment to be available
-      ansible.builtin.command: >-
-        k3s kubectl wait --namespace kube-system
-        --for=condition=available deployment/coredns
-        --timeout=300s
-      changed_when: false
-
     - name: Get current CoreDNS Corefile
       ansible.builtin.command: >-
         k3s kubectl get configmap coredns -n kube-system
@@ -62,20 +55,22 @@
       register: __coredns_corefile
       changed_when: false
 
-    - name: Patch CoreDNS ConfigMap to add hosts plugin
-      when: "'hosts /etc/coredns/node-hosts' not in __coredns_corefile.stdout"
+    # k3s CoreDNS already has a `hosts /etc/coredns/NodeHosts` block managed by k3s.
+    # CoreDNS does not allow duplicate plugins in a server block, so we must not add
+    # another `hosts` entry. Instead we shadow the NodeHosts path with a hostPath mount.
+    # This task removes any previously added duplicate block.
+    - name: Remove incorrectly added duplicate hosts block from CoreDNS Corefile
+      when: "'hosts /etc/coredns/node-hosts' in __coredns_corefile.stdout"
       ansible.builtin.shell: |
         k3s kubectl get configmap coredns -n kube-system -o json | python3 -c "
         import json, sys
         cm = json.load(sys.stdin)
         hosts_block = '    hosts /etc/coredns/node-hosts {\n        reload 15s\n        fallthrough\n    }\n'
-        cm['data']['Corefile'] = cm['data']['Corefile'].replace(
-            '    prometheus', hosts_block + '    prometheus', 1
-        )
+        cm['data']['Corefile'] = cm['data']['Corefile'].replace(hosts_block, '', 1)
         print(json.dumps(cm))
         " | k3s kubectl apply -f -
 
-    - name: Check if CoreDNS deployment already has node-hosts-file volume
+    - name: Check if CoreDNS deployment has node-hosts-file mounted at NodeHosts path
       ansible.builtin.command:
         argv:
           - k3s
@@ -86,21 +81,37 @@
           - -n
           - kube-system
           - -o
-          - "jsonpath={.spec.template.spec.volumes[?(@.name=='node-hosts-file')].name}"
-      register: __coredns_hosts_volume
+          - "jsonpath={.spec.template.spec.containers[0].volumeMounts[?(@.mountPath=='/etc/coredns/NodeHosts')].name}"
+      register: __coredns_hosts_mount
       changed_when: false
 
-    - name: Patch CoreDNS Deployment to mount node hosts file
-      when: __coredns_hosts_volume.stdout == ''
+    - name: Patch CoreDNS Deployment to overlay NodeHosts with node hosts file
+      when: __coredns_hosts_mount.stdout != 'node-hosts-file'
       ansible.builtin.shell: |
-        k3s kubectl patch deployment coredns -n kube-system --type=json -p='[
-          {"op":"add","path":"/spec/template/spec/volumes/-","value":{"name":"node-hosts-file","hostPath":{"path":"/etc/hosts","type":"File"}}},
-          {"op":"add","path":"/spec/template/spec/containers/0/volumeMounts/-","value":{"name":"node-hosts-file","mountPath":"/etc/coredns/node-hosts","readOnly":true}}
-        ]'
+        k3s kubectl get deployment coredns -n kube-system -o json | python3 -c "
+        import json, sys
+        deploy = json.load(sys.stdin)
+        spec = deploy['spec']['template']['spec']
+        spec['volumes'] = [v for v in spec['volumes'] if v['name'] != 'node-hosts-file']
+        for c in spec['containers']:
+            c['volumeMounts'] = [m for m in c['volumeMounts'] if m['name'] != 'node-hosts-file']
+        spec['volumes'].append({
+            'name': 'node-hosts-file',
+            'hostPath': {'path': '/etc/hosts', 'type': 'File'}
+        })
+        for c in spec['containers']:
+            if c['name'] == 'coredns':
+                c['volumeMounts'].append({
+                    'name': 'node-hosts-file',
+                    'mountPath': '/etc/coredns/NodeHosts',
+                    'readOnly': True
+                })
+        print(json.dumps(deploy))
+        " | k3s kubectl apply -f -
 
     - name: Restart CoreDNS to apply changes
       when: >-
-        'hosts /etc/coredns/node-hosts' not in __coredns_corefile.stdout or
-        __coredns_hosts_volume.stdout == ''
+        'hosts /etc/coredns/node-hosts' in __coredns_corefile.stdout or
+        __coredns_hosts_mount.stdout != 'node-hosts-file'
       ansible.builtin.command: >-
         k3s kubectl rollout restart deployment/coredns -n kube-system
