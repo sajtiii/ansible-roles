@@ -65,8 +65,3 @@
     cmd: k3s kubectl label node {{ __k3s_node_name.stdout }} hardware/coral-tpu=true --overwrite
   when: __k3s_installed.stat.exists and __k3s_node_name.stdout != ""
   changed_when: false
-- name: Taint k3s node for Coral TPU
-  ansible.builtin.command:
-    cmd: k3s kubectl taint node {{ __k3s_node_name.stdout }} hardware/coral-tpu=true:NoSchedule --overwrite
-  when: __k3s_installed.stat.exists and __k3s_node_name.stdout != ""
-  changed_when: false
