@@ -10,27 +10,10 @@
     owner: root
     group: root
     mode: "0700"
-- name: Deploy wireguard configuration
-  ansible.builtin.template:
-    src: wg.conf.j2
-    dest: "/etc/wireguard/{{ wireguard.interface }}.conf"
-    owner: root
-    group: root
-    mode: "0600"
-  notify: restart wireguard
-- name: Update hosts file with wireguard addresses
-  ansible.builtin.blockinfile:
-    path: /etc/hosts
-    marker: "# {mark} wireguard interconnect"
-    block: |
-      {% set _net4 = wireguard.ipv4_cidr | ansible.utils.ipaddr('network') %}
-      {% set _net6 = wireguard.ipv6_cidr | ansible.utils.ipaddr('network') %}
-      {% for node in wireguard.nodes | dict2items %}
-      {{ _net4 | ansible.utils.ipmath(loop.index) }} {{ node.key }}
-      {{ _net6 | ansible.utils.ipmath(loop.index) }} {{ node.key }}
-      {% endfor %}
-- name: Enable and start wireguard
-  ansible.builtin.service:
-    name: "wg-quick@{{ wireguard.interface }}"
-    enabled: true
-    state: started
+- name: Configure wireguard interface {{ item.key }}
+  ansible.builtin.include_tasks: interface.yml
+  vars:
+    wg_iface_name: "{{ item.key }}"
+    wg_iface: "{{ item.value }}"
+  loop: "{{ wireguard.interfaces | dict2items }}"
+  when: inventory_hostname in (item.value.nodes | default({}))

@@ -1,19 +1,21 @@
 {{ ansible_managed | comment }}
 
 {# --- Node list in dict insertion order --- #}
-{% set _nodes = wireguard.nodes | dict2items %}
-{% set _is_hub_spoke = wireguard.topology | mandatory == 'hub-spoke' %}
+{% set _nodes = wg_iface.nodes | dict2items %}
+{% set _is_hub_spoke = wg_iface.topology | mandatory == 'hub-spoke' %}
 
 {# --- Network bases and prefix lengths --- #}
-{% set _net4 = wireguard.ipv4_cidr | ansible.utils.ipaddr('network') %}
-{% set _net6 = wireguard.ipv6_cidr | ansible.utils.ipaddr('network') %}
-{% set _prefix4 = wireguard.ipv4_cidr | ansible.utils.ipaddr('prefix') %}
-{% set _prefix6 = wireguard.ipv6_cidr | ansible.utils.ipaddr('prefix') %}
+{% set _net4 = wg_iface.ipv4_cidr | ansible.utils.ipaddr('network') %}
+{% set _prefix4 = wg_iface.ipv4_cidr | ansible.utils.ipaddr('prefix') %}
+{% if wg_iface.ipv6_cidr %}
+{% set _net6 = wg_iface.ipv6_cidr | ansible.utils.ipaddr('network') %}
+{% set _prefix6 = wg_iface.ipv6_cidr | ansible.utils.ipaddr('prefix') %}
+{% endif %}
 
 {# --- Current node position --- #}
 {% set ns = namespace(my_idx=0) %}
 {% for node in _nodes %}
-{%   if node.key == ansible_host %}
+{%   if node.key == inventory_hostname %}
 {%     set ns.my_idx = loop.index %}
 {%   endif %}
 {% endfor %}
@@ -22,27 +24,30 @@
 {% set _i_am_spoke = _is_hub_spoke and ns.my_idx != 1 %}
 
 [Interface]
-Address = {{ _net4 | ansible.utils.ipmath(ns.my_idx) }}/{{ _prefix4 }}, {{ _net6 | ansible.utils.ipmath(ns.my_idx) }}/{{ _prefix6 }}
-ListenPort = {{ wireguard.port }}
-PrivateKey = {{ wireguard.private_key | mandatory }}
+Address = {{ _net4 | ansible.utils.ipmath(ns.my_idx) }}/{{ _prefix4 }}{% if wg_iface.ipv6_cidr %}, {{ _net6 | ansible.utils.ipmath(ns.my_idx) }}/{{ _prefix6 }}{% endif %}
+
+ListenPort = {{ wg_iface.port }}
+PrivateKey = {{ wg_iface.nodes[inventory_hostname].private_key | mandatory }}
 {% for node in _nodes %}
-{%   if node.key != ansible_host %}
+{%   if node.key != inventory_hostname %}
 {%     set _peer_is_hub = loop.index == 1 %}
 {%     if not _is_hub_spoke or not _i_am_spoke or _peer_is_hub %}
 
 [Peer]
 # {{ node.key }}
 PublicKey = {{ node.value.public_key }}
-{%       if wireguard.preshared_key is defined %}
-PresharedKey = {{ wireguard.preshared_key }}
+{%       if wg_iface.preshared_key is defined %}
+PresharedKey = {{ wg_iface.preshared_key }}
 {%       endif %}
 {%       if _i_am_spoke and _peer_is_hub %}
-AllowedIPs = {{ wireguard.ipv4_cidr }}, {{ wireguard.ipv6_cidr }}
+AllowedIPs = {{ wg_iface.ipv4_cidr }}{% if wg_iface.ipv6_cidr %}, {{ wg_iface.ipv6_cidr }}{% endif %}
+
 {%       else %}
-AllowedIPs = {{ _net4 | ansible.utils.ipmath(loop.index) }}/32, {{ _net6 | ansible.utils.ipmath(loop.index) }}/128
+AllowedIPs = {{ _net4 | ansible.utils.ipmath(loop.index) }}/32{% if wg_iface.ipv6_cidr %}, {{ _net6 | ansible.utils.ipmath(loop.index) }}/128{% endif %}
+
 {%       endif %}
-Endpoint = {{ node.key }}:{{ wireguard.port }}
-PersistentKeepalive = {{ wireguard.keepalive }}
+Endpoint = {{ node.key }}:{{ wg_iface.port }}
+PersistentKeepalive = {{ wg_iface.keepalive }}
 {%     endif %}
 {%   endif %}
 {% endfor %}
