@@ -1,6 +1,6 @@
 # wireguard
 
-Configures WireGuard interfaces for node interconnect. Supports mesh and hub-spoke topologies with automatic IP assignment.
+Configures WireGuard interfaces for node interconnect. Supports multiple interfaces, mesh and hub-spoke topologies, automatic IP assignment, and cleanup of stale interfaces.
 
 Requires the `ansible.utils` collection.
 
@@ -11,31 +11,38 @@ Requires the `ansible.utils` collection.
 
 ## IP Assignment
 
-Addresses are assigned automatically from the CIDRs in dict insertion order. Position 1 gets `.1`/`::1`, position 2 gets `.2`/`::2`, etc.
+Addresses are assigned automatically from the CIDRs in dict insertion order. Position 1 gets `.1`/`::1`, position 2 gets `.2`/`::2`, etc. The same order determines which node is the hub in hub-spoke topology.
 
 ## Variables
 
 ```yaml
 # group_vars
 wireguard:
-  interface: wg-interconnect
-  port: 51899
-  ipv4_cidr: "10.10.0.0/16"
-  ipv6_cidr: "fd00:10:10::/64"
-  topology: mesh              # mesh | hub-spoke
-  keepalive: 25
-  preshared_key: "{{ vault_wireguard_psk }}"
-
-  nodes:                      # key = ansible_host; order = IP order; first = hub
-    10.0.0.1:
-      public_key: "<pubkey>"
-    10.0.0.2:
-      public_key: "<pubkey>"
-    10.0.0.3:
-      public_key: "<pubkey>"
+  interfaces:
+    wg-interconnect:
+      port: 51820
+      ipv4_cidr: "10.10.0.0/24"
+      ipv6_cidr: "fd00:10:10::/64"  # set to false to disable IPv6
+      topology: mesh                # mesh | hub-spoke
+      keepalive: 25                 # optional, default 25
+      mtu: 1420                     # optional, default 1420
+      preshared_key: ""             # optional, shared fallback across all peers
+      nodes:                        # key = inventory_hostname; order = IP order; first = hub
+        myhost1:
+          private_key: "{{ vault_wg_myhost1_privkey }}"
+          public_key: "<pubkey>"
+          endpoint: "1.2.3.4"      # optional, defaults to node key (inventory_hostname)
+          preshared_key: ""        # optional, overrides interface-level preshared_key
+        myhost2:
+          private_key: "{{ vault_wg_myhost2_privkey }}"
+          public_key: "<pubkey>"
+        myhost3:
+          private_key: "{{ vault_wg_myhost3_privkey }}"
+          public_key: "<pubkey>"
 ```
 
-```yaml
-# host_vars/<hostname>.yml
-wireguard_private_key: "{{ vault_wireguard_private_key }}"
-```
+## Notes
+
+- Each host only configures interfaces where it appears in `nodes`.
+- Ansible-managed config files for interfaces no longer in `wireguard.interfaces` are automatically stopped, disabled, and removed.
+- `/etc/hosts` is updated with WireGuard IP addresses for all nodes in each interface.
