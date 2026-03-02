@@ -76,9 +76,17 @@
         " | k3s kubectl apply -f -
 
     - name: Check if CoreDNS deployment already has node-hosts-file volume
-      ansible.builtin.command: >-
-        k3s kubectl get deployment coredns -n kube-system
-        -o jsonpath={.spec.template.spec.volumes[?(@.name=="node-hosts-file")].name}
+      ansible.builtin.command:
+        argv:
+          - k3s
+          - kubectl
+          - get
+          - deployment
+          - coredns
+          - -n
+          - kube-system
+          - -o
+          - "jsonpath={.spec.template.spec.volumes[?(@.name=='node-hosts-file')].name}"
       register: __coredns_hosts_volume
       changed_when: false
 
