@@ -18,6 +18,8 @@ k3s:
     node_cidr_mask_size_ipv6: 64
     masquerade: false
     node_ip: ""
+  dns:
+    pass_hosts_file: false
   api_server:
     advertise_address: ""
     tls_san: []

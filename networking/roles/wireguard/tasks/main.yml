@@ -17,3 +17,58 @@
     wg_iface: "{{ item.value }}"
   loop: "{{ wireguard.interfaces | dict2items }}"
   when: inventory_hostname in (item.value.nodes | default({}))
+
+- name: Find existing WireGuard config files
+  ansible.builtin.find:
+    paths: /etc/wireguard
+    patterns: "*.conf"
+  register: _wg_existing_configs
+
+- name: Check which config files are Ansible-managed
+  ansible.builtin.shell:
+    cmd: "head -3 {{ item.path | quote }} | grep -q 'Ansible managed'"
+  loop: "{{ _wg_existing_configs.files }}"
+  register: _wg_managed_checks
+  changed_when: false
+  failed_when: false
+
+- name: Collect active WireGuard interface names for this host
+  ansible.builtin.set_fact:
+    _wg_active_ifaces: "{{ _wg_active_ifaces | default([]) + [item.key] }}"
+  loop: "{{ wireguard.interfaces | dict2items }}"
+  when: inventory_hostname in (item.value.nodes | default({}))
+
+- name: Determine stale Ansible-managed WireGuard interfaces
+  ansible.builtin.set_fact:
+    _wg_stale_ifaces: >-
+      {{
+        _wg_managed_checks.results
+        | selectattr('rc', 'equalto', 0)
+        | map(attribute='item.path')
+        | map('basename')
+        | map('split', '.')
+        | map('first')
+        | reject('in', _wg_active_ifaces | default([]))
+        | list
+      }}
+
+- name: Stop and disable stale WireGuard interfaces
+  ansible.builtin.service:
+    name: "wg-quick@{{ item }}"
+    enabled: false
+    state: stopped
+  loop: "{{ _wg_stale_ifaces }}"
+  ignore_errors: true
+
+- name: Remove stale WireGuard config files
+  ansible.builtin.file:
+    path: "/etc/wireguard/{{ item }}.conf"
+    state: absent
+  loop: "{{ _wg_stale_ifaces }}"
+
+- name: Remove stale WireGuard hosts file entries
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} wireguard {{ item }}"
+    state: absent
+  loop: "{{ _wg_stale_ifaces }}"
