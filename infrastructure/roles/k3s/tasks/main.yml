@@ -50,11 +50,9 @@
   block:
     - name: Get current CoreDNS Corefile
       ansible.builtin.command: >-
-        k3s kubectl get configmap coredns -n kube-system
-        -o jsonpath={.data.Corefile}
+        k3s kubectl get configmap coredns -n kube-system -o jsonpath={.data.Corefile}
       register: __coredns_corefile
       changed_when: false
-
     - name: Update CoreDNS Corefile to use node hosts mount path
       # We cannot add a second `hosts` plugin (CoreDNS forbids duplicates), and we cannot
       # mount inside /etc/coredns because configmap items are symlinks — kernel bind-mount
@@ -72,7 +70,6 @@
         cm['data']['Corefile'] = cf
         print(json.dumps(cm))
         " | k3s kubectl apply -f -
-
     - name: Check if CoreDNS deployment has node-hosts-file mounted at /etc/node-hosts
       ansible.builtin.command:
         argv:
@@ -87,7 +84,6 @@
           - "jsonpath={.spec.template.spec.containers[0].volumeMounts[?(@.mountPath=='/etc/node-hosts')].name}"
       register: __coredns_hosts_mount
       changed_when: false
-
     - name: Patch CoreDNS Deployment to mount node hosts file at /etc/node-hosts
       when: __coredns_hosts_mount.stdout != 'node-hosts-file'
       ansible.builtin.shell: |
@@ -111,10 +107,8 @@
                 })
         print(json.dumps(deploy))
         " | k3s kubectl replace -f -
-
     - name: Restart CoreDNS to apply changes
       when: >-
-        'hosts /etc/node-hosts' not in __coredns_corefile.stdout or
-        __coredns_hosts_mount.stdout != 'node-hosts-file'
+        'hosts /etc/node-hosts' not in __coredns_corefile.stdout or __coredns_hosts_mount.stdout != 'node-hosts-file'
       ansible.builtin.command: >-
         k3s kubectl rollout restart deployment/coredns -n kube-system
