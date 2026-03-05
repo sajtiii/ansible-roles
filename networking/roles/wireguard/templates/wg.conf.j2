@@ -25,6 +25,12 @@ Address = {{ _net4 | ansible.utils.ipmath(ns.my_idx) }}/{{ _prefix4 }}{% if wg_i
 ListenPort = {{ wg_iface.port }}
 PrivateKey = {{ wg_iface.nodes[inventory_hostname].private_key | mandatory }}
 MTU = {{ wg_iface.mtu | default("1420") }}
+{% for cmd in wg_iface.nodes[inventory_hostname].post_up | default([]) %}
+PostUp = {{ cmd }}
+{% endfor %}
+{% for cmd in wg_iface.nodes[inventory_hostname].pre_down | default([]) %}
+PreDown = {{ cmd }}
+{% endfor %}
 {% for node in _nodes %}
 {%   if node.key != inventory_hostname %}
 {%     set _peer_is_hub = loop.index == 1 %}
