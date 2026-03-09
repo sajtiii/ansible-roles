@@ -62,10 +62,12 @@
         marker: "# {mark} wireguard {{ item }}"
         state: absent
       loop: "{{ _wg_stale_ifaces }}"
-- name: Configure wireguard interface {{ item.key }}
+- name: "Configure wireguard interfaces"
   ansible.builtin.include_tasks: interface.yml
   vars:
     wg_iface_name: "{{ item.key }}"
     wg_iface: "{{ item.value }}"
   loop: "{{ wireguard.interfaces | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
   when: inventory_hostname in (item.value.nodes | default({}))

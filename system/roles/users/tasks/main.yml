@@ -5,7 +5,7 @@
     password: "{{ root_password }}"
     shell: /bin/bash
     state: present
-- name: "Create user `{{ item.username }}`"
+- name: "Create user `{{ user.username }}`"
   loop: "{{ users }}"
   loop_control:
     loop_var: user
@@ -18,8 +18,10 @@
 - name: Determine users to remove
   ansible.builtin.set_fact:
     __users_to_remove: "{{ (__managed_users_file.content | default('') | b64decode).split('\n') | select | difference(users | map(attribute='username') | list) }}"
-- name: "Remove user `{{ item }}` (no longer managed)"
+- name: "Remove users no longer managed"
   loop: "{{ __users_to_remove }}"
+  loop_control:
+    label: "{{ item }}"
   ansible.builtin.user:
     name: "{{ item }}"
     state: absent
