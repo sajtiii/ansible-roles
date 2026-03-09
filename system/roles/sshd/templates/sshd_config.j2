@@ -1,0 +1,48 @@
+{{ ansible_managed | comment }}
+
+Include /etc/ssh/sshd_config.d/*.conf
+
+# Connection
+Port {{ sshd.port | mandatory }}
+AddressFamily any
+LoginGraceTime 30
+MaxAuthTries {{ sshd.max_auth_tries }}
+MaxSessions {{ sshd.max_sessions }}
+MaxStartups 3:50:10
+
+# Authentication
+PermitRootLogin {{ 'prohibit-password' if sshd.permit_root_login else 'no' }}
+PubkeyAuthentication yes
+PasswordAuthentication {{ 'yes' if sshd.password_auth else 'no' }}
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+KerberosAuthentication no
+GSSAPIAuthentication no
+HostbasedAuthentication no
+AuthorizedKeysFile .ssh/authorized_keys
+UsePAM yes
+StrictModes yes
+
+# Security hardening
+X11Forwarding {{ 'yes' if sshd.x11_forwarding else 'no' }}
+AllowAgentForwarding {{ 'yes' if sshd.agent_forwarding else 'no' }}
+AllowTcpForwarding {{ 'yes' if sshd.tcp_forwarding else 'no' }}
+PermitTunnel no
+PermitUserEnvironment no
+DisableForwarding {{ 'no' if (sshd.agent_forwarding or sshd.tcp_forwarding or sshd.x11_forwarding) else 'yes' }}
+
+# Logging
+SyslogFacility AUTH
+LogLevel VERBOSE
+
+# Keep alive (detect dead connections)
+ClientAliveInterval 300
+ClientAliveCountMax 2
+TCPKeepAlive no
+
+# Misc
+PrintMotd no
+PrintLastLog yes
+UseDNS no
+AcceptEnv LANG LC_*
+Subsystem sftp /usr/lib/openssh/sftp-server

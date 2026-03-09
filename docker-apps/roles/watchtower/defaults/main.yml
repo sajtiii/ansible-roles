@@ -1,0 +1,7 @@
+watchtower:
+  enabled: true
+  container_name: watchtower
+  config:
+    schedule: "0 30 4 * * *"
+  metrics:
+    enabled: true

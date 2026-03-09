@@ -1,0 +1,70 @@
+- name: Ensure gnupg is installed
+  ansible.builtin.package:
+    name: gnupg
+    state: present
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+- name: Add Coral Edge TPU apt key
+  ansible.builtin.shell:
+    cmd: set -o pipefail; curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /etc/apt/keyrings/coral-edgetpu.gpg
+    executable: /bin/bash
+    creates: /etc/apt/keyrings/coral-edgetpu.gpg
+- name: Add Coral Edge TPU repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/coral-edgetpu.list
+    content: "deb [signed-by=/etc/apt/keyrings/coral-edgetpu.gpg] https://packages.cloud.google.com/apt coral-edgetpu-stable main"
+    mode: "0644"
+- name: Install gasket driver and Edge TPU runtime
+  ansible.builtin.package:
+    update_cache: true
+    name:
+      - gasket-dkms
+      - "libedgetpu1-{{ google_coral.runtime | mandatory }}"
+    state: latest
+- name: Add Coral udev rule
+  ansible.builtin.copy:
+    dest: /etc/udev/rules.d/65-apex.rules
+    content: 'SUBSYSTEM=="apex", MODE="0660", GROUP="apex"'
+    mode: "0644"
+  notify: reload udev rules
+- name: Ensure apex group exists
+  ansible.builtin.group:
+    name: apex
+    state: present
+- name: Check if /dev/apex_0 is a stale directory
+  ansible.builtin.stat:
+    path: /dev/apex_0
+  register: __apex_dev
+- name: Remove stale /dev/apex_0 directory
+  ansible.builtin.file:
+    path: /dev/apex_0
+    state: absent
+  when: __apex_dev.stat.exists and __apex_dev.stat.isdir
+- name: Load gasket and apex kernel modules
+  ansible.builtin.command:
+    cmd: modprobe gasket apex
+  changed_when: false
+  notify: reload udev rules
+- name: Check if k3s is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: __k3s_installed
+- name: Get k3s node name by IP
+  ansible.builtin.shell:
+    cmd: >
+      set -o pipefail;
+      k3s kubectl get nodes
+      -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{range .status.addresses[?(@.type=="InternalIP")]}{.address}{end}{"\n"}{end}'
+      | awk -F'\t' '$2 == "{{ ansible_default_ipv4.address }}" {print $1}'
+    executable: /bin/bash
+  register: __k3s_node_name
+  when: __k3s_installed.stat.exists
+  changed_when: false
+- name: Label k3s node with Coral TPU capability
+  ansible.builtin.command:
+    cmd: k3s kubectl label node {{ __k3s_node_name.stdout }} hardware/coral-tpu=true --overwrite
+  when: __k3s_installed.stat.exists and __k3s_node_name.stdout != ""
+  changed_when: false

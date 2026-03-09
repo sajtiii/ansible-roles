@@ -1,0 +1,7 @@
+traefik:
+  enabled: true
+  container_name: traefik
+  metrics:
+    enabled: true
+  cert_dumper:
+    enabled: false

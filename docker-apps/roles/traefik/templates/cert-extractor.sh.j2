@@ -1,0 +1,49 @@
+#!/bin/sh
+# /hooks/generate_tls.sh
+
+CERTS_DIR="/certs/dumps"
+
+for DOMAIN_DIR in "$CERTS_DIR"/*; do
+  if [ ! -d "$DOMAIN_DIR" ]; then
+    continue
+  fi
+
+  DOMAIN=$(basename "$DOMAIN_DIR")
+  CRT_FILE="$DOMAIN_DIR/certificate.crt"
+  KEY_FILE="$DOMAIN_DIR/privatekey.key"
+
+  if [ ! -f "$CRT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
+    echo "Skipping $DOMAIN: missing cert or key"
+    continue
+  fi
+
+  TMP_DIR=$(mktemp -d)
+  awk 'BEGIN {c=0;} /BEGIN CERTIFICATE/ {c++} { print > "'"$TMP_DIR"'/cert-part-" c ".pem" }' "$CRT_FILE"
+
+  # Check that at least one part was created
+  PART_COUNT=$(ls "$TMP_DIR"/cert-part-*.pem 2>/dev/null | wc -l)
+  if [ "$PART_COUNT" -lt 1 ]; then
+    echo "Invalid cert chain for $DOMAIN. Skipping."
+    rm -rf "$TMP_DIR"
+    continue
+  fi
+
+  # Output files
+  FULLCHAIN_FILE="${DOMAIN_DIR}/cert.pem"
+  PRIVKEY_FILE="${DOMAIN_DIR}/privkey.pem"
+  CA_FILE="${DOMAIN_DIR}/cacert.pem"
+
+  # Concatenate all parts for fullchain
+  cat "$TMP_DIR"/cert-part-*.pem > "$FULLCHAIN_FILE"
+
+  # Copy private key
+  cp "$KEY_FILE" "$PRIVKEY_FILE"
+
+  # Copy last cert part as CA (last one sorted alphanumerically)
+  LAST_CERT=$(ls "$TMP_DIR"/cert-part-*.pem | sort | tail -n 1)
+  cp "$LAST_CERT" "$CA_FILE"
+
+  echo "✅ Generated TLS certs for $DOMAIN"
+
+  rm -rf "$TMP_DIR"
+done

@@ -1,0 +1,21 @@
+# Managed by Ansible - do not edit manually
+[Unit]
+Description=VLAN {{ iface_name }} (ID {{ vlan_id }} on {{ base_iface }})
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=-/sbin/ip link delete {{ iface_name }}
+ExecStart=/sbin/ip link add link {{ base_iface }} name {{ iface_name }} type vlan id {{ vlan_id }}
+ExecStart=/sbin/ip link set {{ iface_name }} up
+{% if ipv4_cidr %}
+ExecStart=/sbin/ip addr add {{ ipv4_cidr }} dev {{ iface_name }}
+{% endif %}
+{% if ipv6_cidr %}
+ExecStart=/sbin/ip addr add {{ ipv6_cidr }} dev {{ iface_name }}
+{% endif %}
+ExecStop=/sbin/ip link delete {{ iface_name }}
+
+[Install]
+WantedBy=multi-user.target

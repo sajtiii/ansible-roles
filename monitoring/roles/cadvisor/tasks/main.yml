@@ -1,0 +1,37 @@
+- name: Check if cAdvisor is installed
+  ansible.builtin.stat:
+    path: "/opt/cadvisor/cadvisor"
+  register: __cadvisor_is_installed
+- name: Gather currently installed cAdvisor version (if any)
+  ansible.builtin.command: "/opt/cadvisor/cadvisor --version | grep -o '[0-9]*\\.[0-9]*\\.[0-9]*'"
+  changed_when: false
+  register: __cadvisor_current_version_output
+  when: __cadvisor_is_installed.stat.exists
+- name: Create cAdvisor directory
+  ansible.builtin.file:
+    path: "/opt/cadvisor"
+    state: directory
+    mode: "0755"
+- name: Download cadvisor binary
+  when: not __cadvisor_is_installed.stat.exists or __cadvisor_current_version_output != cadvisor.version
+  ansible.builtin.get_url:
+    url: "https://github.com/google/cadvisor/releases/download/v{{ cadvisor.version }}/cadvisor-v{{ cadvisor.version }}-linux-{{ go_arch }}"
+    dest: "/opt/cadvisor/cadvisor"
+    mode: "0755"
+  register: _download_binary
+  until: _download_binary is succeeded
+  retries: 5
+  delay: 2
+- name: Copy the cadvisor systemd service file
+  ansible.builtin.template:
+    src: cadvisor.service.j2
+    dest: /etc/systemd/system/cadvisor.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart cadvisor
+- name: Enable & Start cAdvisor service
+  ansible.builtin.service:
+    name: cadvisor
+    enabled: true
+    state: started

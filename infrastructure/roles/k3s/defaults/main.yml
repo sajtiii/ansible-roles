@@ -1,0 +1,39 @@
+k3s:
+  role: both
+  cluster_init: false
+  token: ""
+  server: ""
+  metrics:
+    enabled: false
+  traefik:
+    enabled: false
+  wireguard:
+    enabled: false
+    node_external_ip: ""
+  ipv6:
+    enabled: false
+    cluster_cidr: "fd00:42::/56,10.42.0.0/16"
+    service_cidr: "fd00:43::/112,10.43.0.0/16"
+    node_cidr_mask_size_ipv4: 24
+    node_cidr_mask_size_ipv6: 64
+    masquerade: false
+    node_ip: ""
+  dns:
+    pass_hosts_file: false
+  api_server:
+    advertise_address: ""
+    additional_tls_sans: []
+  # Node labels: key-value pairs to label the node
+  # Example:
+  #   node_labels:
+  #     environment: production
+  #     node.kubernetes.io/instance-type: standard
+  #     workload-type: gpu
+  node_labels: {}
+  # Node taints: list of taints in format "key=value:Effect"
+  # Effect can be: NoSchedule, PreferNoSchedule, or NoExecute
+  # Example:
+  #   node_taints:
+  #     - "dedicated=database:NoSchedule"
+  #     - "special=true:PreferNoSchedule"
+  node_taints: []

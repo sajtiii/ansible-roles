@@ -1,0 +1,7 @@
+- name: Restart Unattended Upgrades service
+  listen: restart auto-upgrades
+  ansible.builtin.service:
+    name: unattended-upgrades
+    state: restarted
+  when:
+    - not ansible_check_mode

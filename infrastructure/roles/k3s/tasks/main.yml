@@ -1,0 +1,125 @@
+- name: Create k3s config directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+- name: Template k3s configuration
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: restart k3s
+- name: Check if k3s is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: __k3s_is_installed
+- name: Install k3s
+  when: not __k3s_is_installed.stat.exists
+  block:
+    - name: Download k3s install script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s-install.sh
+        mode: "0755"
+    - name: Run k3s install script (server)
+      ansible.builtin.command: /tmp/k3s-install.sh
+      environment:
+        INSTALL_K3S_SKIP_START: "true"
+      when: k3s.role in ['both', 'etcd', 'control-plane']
+      changed_when: true
+    - name: Run k3s install script (agent)
+      ansible.builtin.command: /tmp/k3s-install.sh
+      environment:
+        INSTALL_K3S_EXEC: agent
+        INSTALL_K3S_SKIP_START: "true"
+      when: k3s.role == 'agent'
+      changed_when: true
+    - name: Remove install script
+      ansible.builtin.file:
+        path: /tmp/k3s-install.sh
+        state: absent
+- name: Enable and start k3s service
+  ansible.builtin.service:
+    name: "{{ 'k3s-agent' if k3s.role == 'agent' else 'k3s' }}"
+    enabled: true
+    state: started
+- name: Configure CoreDNS to respect node hosts file
+  when:
+    - k3s.role != 'agent'
+    - k3s.dns.pass_hosts_file
+  block:
+    - name: Get current CoreDNS Corefile
+      ansible.builtin.command: >-
+        k3s kubectl get configmap coredns -n kube-system -o jsonpath={.data.Corefile}
+      register: __coredns_corefile
+      changed_when: false
+    - name: Update CoreDNS Corefile to use node hosts mount path
+      # We cannot add a second `hosts` plugin (CoreDNS forbids duplicates), and we cannot
+      # mount inside /etc/coredns because configmap items are symlinks — kernel bind-mount
+      # cannot overlay a symlink target. Instead, redirect the existing k3s-managed hosts
+      # plugin to /etc/node-hosts where we can mount without conflict.
+      when: "'hosts /etc/node-hosts' not in __coredns_corefile.stdout"
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          k3s kubectl get configmap coredns -n kube-system -o json | python3 -c "
+          import json, sys
+          cm = json.load(sys.stdin)
+          cf = cm['data']['Corefile']
+          bad_block = '    hosts /etc/coredns/node-hosts {\n        reload 15s\n        fallthrough\n    }\n'
+          cf = cf.replace(bad_block, '', 1)
+          cf = cf.replace('hosts /etc/coredns/NodeHosts {', 'hosts /etc/node-hosts {', 1)
+          cm['data']['Corefile'] = cf
+          print(json.dumps(cm))
+          " | k3s kubectl apply -f -
+        executable: /bin/bash
+      changed_when: true
+    - name: Check if CoreDNS deployment has node-hosts-file mounted at /etc/node-hosts
+      ansible.builtin.command:
+        argv:
+          - k3s
+          - kubectl
+          - get
+          - deployment
+          - coredns
+          - -n
+          - kube-system
+          - -o
+          - "jsonpath={.spec.template.spec.containers[0].volumeMounts[?(@.mountPath=='/etc/node-hosts')].name}"
+      register: __coredns_hosts_mount
+      changed_when: false
+    - name: Patch CoreDNS Deployment to mount node hosts file at /etc/node-hosts
+      when: __coredns_hosts_mount.stdout != 'node-hosts-file'
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          k3s kubectl get deployment coredns -n kube-system -o json | python3 -c "
+          import json, sys
+          deploy = json.load(sys.stdin)
+          spec = deploy['spec']['template']['spec']
+          spec['volumes'] = [v for v in spec['volumes'] if v['name'] != 'node-hosts-file']
+          for c in spec['containers']:
+              c['volumeMounts'] = [m for m in c['volumeMounts'] if m['name'] != 'node-hosts-file']
+          spec['volumes'].append({
+              'name': 'node-hosts-file',
+              'hostPath': {'path': '/etc/hosts', 'type': 'File'}
+          })
+          for c in spec['containers']:
+              if c['name'] == 'coredns':
+                  c['volumeMounts'].append({
+                      'name': 'node-hosts-file',
+                      'mountPath': '/etc/node-hosts',
+                      'readOnly': True
+                  })
+          print(json.dumps(deploy))
+          " | k3s kubectl replace -f -
+        executable: /bin/bash
+      changed_when: true
+    - name: Restart CoreDNS to apply changes
+      when: >-
+        'hosts /etc/node-hosts' not in __coredns_corefile.stdout or __coredns_hosts_mount.stdout != 'node-hosts-file'
+      ansible.builtin.command: >-
+        k3s kubectl rollout restart deployment/coredns -n kube-system
+      changed_when: true

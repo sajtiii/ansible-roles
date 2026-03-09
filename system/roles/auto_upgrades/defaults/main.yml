@@ -1,0 +1,11 @@
+auto_upgrades:
+  reboot:
+    enabled: false
+    time: "02:00"
+  security: true
+  updates: false
+  backports: false
+  major: false
+  packages:
+    exclude: []
+  cleanup: true

@@ -1,0 +1,64 @@
+{{ ansible_managed | comment }}
+{# --- Node list in dict insertion order --- #}
+{%- set _nodes = wg_iface.nodes | dict2items %}
+{%- set _is_hub_spoke = wg_iface.topology | mandatory == 'hub-spoke' %}
+{# --- Network bases and prefix lengths --- #}
+{%- set _net4 = wg_iface.ipv4_cidr | ansible.utils.ipaddr('network') %}
+{%- set _prefix4 = wg_iface.ipv4_cidr | ansible.utils.ipaddr('prefix') %}
+{%- if wg_iface.ipv6_cidr %}
+{%- set _net6 = wg_iface.ipv6_cidr | ansible.utils.ipaddr('network') %}
+{%- set _prefix6 = wg_iface.ipv6_cidr | ansible.utils.ipaddr('prefix') %}
+{%- endif %}
+{# --- Current node position --- #}
+{%- set ns = namespace(my_idx=0) %}
+{%- for node in _nodes %}
+{%   if node.key == inventory_hostname %}
+{%     set ns.my_idx = loop.index %}
+{%   endif %}
+{%- endfor %}
+{# --- In hub-spoke, am I a spoke? --- #}
+{%- set _i_am_spoke = _is_hub_spoke and ns.my_idx != 1 %}
+
+[Interface]
+Address = {{ _net4 | ansible.utils.ipmath(ns.my_idx) }}/{{ _prefix4 }}{% if wg_iface.ipv6_cidr %}, {{ _net6 | ansible.utils.ipmath(ns.my_idx) }}/{{ _prefix6 }}{% endif %}
+
+ListenPort = {{ wg_iface.port }}
+PrivateKey = {{ wg_iface.nodes[inventory_hostname].private_key | mandatory }}
+MTU = {{ wg_iface.mtu | default("1420") }}
+{% for cmd in wg_iface.nodes[inventory_hostname].post_up | default([]) %}
+PostUp = {{ cmd }}
+{% endfor %}
+{% for cmd in wg_iface.nodes[inventory_hostname].pre_down | default([]) %}
+PreDown = {{ cmd }}
+{% endfor %}
+{% for node in _nodes %}
+{%   if node.key != inventory_hostname %}
+{%     set _peer_is_hub = loop.index == 1 %}
+{%     if not _is_hub_spoke or not _i_am_spoke or _peer_is_hub %}
+{#     --- PSK: for hub-spoke use the spoke's PSK on both sides of the tunnel --- #}
+{%     if _is_hub_spoke %}
+{%       set _psk = wg_iface.nodes[inventory_hostname].preshared_key if _i_am_spoke else node.value.preshared_key %}
+{%     else %}
+{%       set _psk = node.value.preshared_key | default(wg_iface.preshared_key | default('')) %}
+{%     endif %}
+
+[Peer]
+# {{ node.key }}
+PublicKey = {{ node.value.public_key }}
+{%       if _psk %}
+PresharedKey = {{ _psk }}
+{%       endif %}
+{%       if _i_am_spoke and _peer_is_hub %}
+AllowedIPs = {{ wg_iface.ipv4_cidr }}{% if wg_iface.ipv6_cidr %}, {{ wg_iface.ipv6_cidr }}{% endif %}
+
+{%       else %}
+AllowedIPs = {{ _net4 | ansible.utils.ipmath(loop.index) }}/32{% if wg_iface.ipv6_cidr %}, {{ _net6 | ansible.utils.ipmath(loop.index) }}/128{% endif %}
+
+{%       endif %}
+{% if not _is_hub_spoke or _i_am_spoke %}
+Endpoint = {{ node.value.endpoint | default(node.key) }}:{{ wg_iface.port }}
+PersistentKeepalive = {{ wg_iface.keepalive | default(25) }}
+{% endif %}
+{%     endif %}
+{%   endif %}
+{% endfor %}

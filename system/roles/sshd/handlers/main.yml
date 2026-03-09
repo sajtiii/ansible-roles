@@ -1,0 +1,5 @@
+- name: Restart SSHD
+  listen: restart sshd
+  ansible.builtin.service:
+    name: sshd
+    state: restarted

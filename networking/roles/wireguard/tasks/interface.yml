@@ -1,0 +1,41 @@
+- name: Deploy wireguard configuration for {{ wg_iface_name }}
+  ansible.builtin.template:
+    src: wg.conf.j2
+    dest: "/etc/wireguard/{{ wg_iface_name }}.conf"
+    owner: root
+    group: root
+    mode: "0600"
+  register: _wg_config
+- name: Update hosts file with {{ wg_iface_name }} addresses
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} wireguard {{ wg_iface_name }}"
+    block: |
+      {% set _net4 = wg_iface.ipv4_cidr | ansible.utils.ipaddr('network') %}
+      {% for node in wg_iface.nodes | dict2items %}
+      {{ _net4 | ansible.utils.ipmath(loop.index) }} {{ node.key }}
+      {% if wg_iface.ipv6_cidr %}
+      {% set _net6 = wg_iface.ipv6_cidr | ansible.utils.ipaddr('network') %}
+      {{ _net6 | ansible.utils.ipmath(loop.index) }} {{ node.key }}
+      {% endif %}
+      {% endfor %}
+- name: Remove orphaned {{ wg_iface_name }} interface if service is not active
+  ansible.builtin.shell:
+    cmd: >-
+      ip link show {{ wg_iface_name }} > /dev/null 2>&1 &&
+      ! systemctl is-active --quiet wg-quick@{{ wg_iface_name }} &&
+      ip link delete {{ wg_iface_name }}
+  failed_when: false
+  changed_when: false
+- name: Enable and start wg-quick@{{ wg_iface_name }}
+  ansible.builtin.service:
+    name: "wg-quick@{{ wg_iface_name }}"
+    enabled: true
+    state: started
+- name: Restart wg-quick@{{ wg_iface_name }} if config changed
+  ansible.builtin.service:
+    name: "wg-quick@{{ wg_iface_name }}"
+    state: restarted
+  when:
+    - not ansible_check_mode
+    - _wg_config.changed

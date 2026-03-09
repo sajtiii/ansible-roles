@@ -1,0 +1,35 @@
+- name: Make sure cron is installed
+  ansible.builtin.package:
+    name: cron
+    state: latest
+- name: Make sure git is installed
+  ansible.builtin.package:
+    name: git
+    state: latest
+- name: Make sure Ansible is installed
+  ansible.builtin.package:
+    name: ansible
+    state: latest
+- name: Copy gitops script
+  ansible.builtin.copy:
+    src: gitops.sh
+    dest: /usr/local/bin/gitops.sh
+    mode: '0755'
+- name: Setup repositories
+  ansible.builtin.include_tasks: setup-repo.yml
+  with_items: "{{ gitops.repositories | mandatory }}"
+- name: "Setup logrotate for log"
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/gitops
+    content: |
+      /var/log/gitops.log {
+          weekly
+          rotate 3
+          compress
+          missingok
+          notifempty
+          create 0640 root root
+      }
+    owner: root
+    group: root
+    mode: '0644'

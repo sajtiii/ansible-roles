@@ -1,0 +1,7 @@
+- name: Restart node_exporter
+  listen: restart node_exporter
+  ansible.builtin.service:
+    name: node_exporter
+    state: restarted
+  when:
+    - not ansible_check_mode
