@@ -2,6 +2,26 @@
 exclude_paths:
   - collections/
 
+mock_roles:
+  - auto_upgrades
+  - autoheal
+  - backup
+  - cadvisor
+  - docker
+  - gitops
+  - monitoring
+  - nftables
+  - node_exporter
+  - normalize
+  - ntp
+  - sshd
+  - traefik
+  - upgrade
+  - users
+  - vlan
+  - watchtower
+  - wireguard
+
 skip_list:
   # Would require renaming all role-level default variables (e.g. autoheal: → autoheal_:)
   - var-naming[no-role-prefix]

@@ -15,7 +15,7 @@ table ip filter {
         iifname { lo } counter accept
 
         {% for port in nftables.ipv4.allowed_ports %}
-            {{ "ip saddr " + port.source if port.source is defined else "" }} {{ port.protocol | default('tcp') }} dport {{ port.port }} accept
+            {{ "ip saddr " + port.source if port.source is defined else "" }} {{ port.protocol | default('tcp') }} dport {{ port.port | mandatory }} accept
         {% endfor %}
 
         jump REJECT
@@ -45,7 +45,7 @@ table ip6 filter {
         iifname { lo } accept
         
         {% for port in nftables.ipv6.allowed_ports %}
-            {{ "ip6 saddr " + port.source if port.source is defined else "" }} {{ port.protocol | default('tcp') }} dport {{ port.port }} accept
+            {{ "ip6 saddr " + port.source if port.source is defined else "" }} {{ port.protocol | default('tcp') }} dport {{ port.port | mandatory }} accept
         {% endfor %}
 
         jump REJECT

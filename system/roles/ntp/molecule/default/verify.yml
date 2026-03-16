@@ -1,0 +1,37 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check chrony.conf exists
+      ansible.builtin.stat:
+        path: /etc/chrony/chrony.conf
+      register: chrony_conf
+
+    - name: Assert chrony.conf exists
+      ansible.builtin.assert:
+        that: chrony_conf.stat.exists
+        fail_msg: "/etc/chrony/chrony.conf does not exist"
+
+    - name: Read chrony.conf
+      ansible.builtin.slurp:
+        src: /etc/chrony/chrony.conf
+      register: chrony_conf_content
+
+    - name: Assert Cloudflare NTP server is configured
+      ansible.builtin.assert:
+        that: "'time.cloudflare.com' in (chrony_conf_content.content | b64decode)"
+        fail_msg: "time.cloudflare.com not found in chrony.conf"
+
+    - name: Assert Google NTP server is configured
+      ansible.builtin.assert:
+        that: "'time.google.com' in (chrony_conf_content.content | b64decode)"
+        fail_msg: "time.google.com not found in chrony.conf"
+
+    - name: Check chrony service state
+      ansible.builtin.service_facts:
+
+    - name: Assert chrony is enabled
+      ansible.builtin.assert:
+        that: "'chrony' in ansible_facts.services"
+        fail_msg: "chrony service not found"

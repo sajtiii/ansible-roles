@@ -1,0 +1,14 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    watchtower:
+      enabled: true
+      container_name: watchtower
+      config:
+        schedule: "0 30 4 * * *"
+      metrics:
+        enabled: false
+  roles:
+    - role: watchtower

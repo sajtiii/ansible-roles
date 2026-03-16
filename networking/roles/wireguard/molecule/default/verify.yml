@@ -1,0 +1,37 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check wireguard package is installed
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Assert wireguard is installed
+      ansible.builtin.assert:
+        that: "'wireguard' in ansible_facts.packages"
+        fail_msg: "wireguard is not installed"
+
+    - name: Check /etc/wireguard directory
+      ansible.builtin.stat:
+        path: /etc/wireguard
+      register: wg_dir
+
+    - name: Assert /etc/wireguard exists with correct permissions
+      ansible.builtin.assert:
+        that:
+          - wg_dir.stat.exists
+          - wg_dir.stat.isdir
+          - wg_dir.stat.mode == '0700'
+        fail_msg: "/etc/wireguard directory missing or has wrong permissions"
+
+    - name: Assert no stale config files exist (empty interfaces)
+      ansible.builtin.find:
+        paths: /etc/wireguard
+        patterns: "*.conf"
+      register: wg_configs
+
+    - name: Assert no WireGuard configs created for empty interfaces
+      ansible.builtin.assert:
+        that: wg_configs.files | length == 0
+        fail_msg: "Unexpected WireGuard config files found"

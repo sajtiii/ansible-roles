@@ -1,0 +1,73 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  discover:
+    name: Discover roles
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.find.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find roles with molecule tests
+        id: find
+        run: |
+          matrix=$(
+            find . -type d -name molecule \
+              | sed 's|^\./||; s|/molecule$||' \
+              | grep '^[^/]*/roles/[^/]*$' \
+              | sort \
+              | while IFS= read -r path; do
+                  collection=$(echo "$path" | cut -d/ -f1)
+                  role=$(echo "$path" | cut -d/ -f3)
+                  echo "{\"collection\":\"$collection\",\"role\":\"$role\"}"
+                done \
+              | jq -sc '{include: .}'
+          )
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: "molecule / ${{ matrix.collection }}.${{ matrix.role }}"
+    needs: discover
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Molecule and dependencies
+        run: |
+          pip install --quiet \
+            molecule \
+            molecule-plugins[docker] \
+            ansible-core \
+            docker \
+            passlib
+
+      - name: Install Ansible collections
+        run: ansible-galaxy collection install ansible.posix community.general
+
+      - name: Run Molecule tests
+        run: molecule test
+        working-directory: ${{ matrix.collection }}/roles/${{ matrix.role }}
+        env:
+          PY_COLORS: "1"
+          ANSIBLE_FORCE_COLOR: "1"

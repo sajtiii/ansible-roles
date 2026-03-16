@@ -3,8 +3,8 @@
 {%- set _nodes = wg_iface.nodes | dict2items %}
 {%- set _is_hub_spoke = wg_iface.topology | mandatory == 'hub-spoke' %}
 {# --- Network bases and prefix lengths --- #}
-{%- set _net4 = wg_iface.ipv4_cidr | ansible.utils.ipaddr('network') %}
-{%- set _prefix4 = wg_iface.ipv4_cidr | ansible.utils.ipaddr('prefix') %}
+{%- set _net4 = wg_iface.ipv4_cidr | mandatory | ansible.utils.ipaddr('network') %}
+{%- set _prefix4 = wg_iface.ipv4_cidr | mandatory | ansible.utils.ipaddr('prefix') %}
 {%- if wg_iface.ipv6_cidr %}
 {%- set _net6 = wg_iface.ipv6_cidr | ansible.utils.ipaddr('network') %}
 {%- set _prefix6 = wg_iface.ipv6_cidr | ansible.utils.ipaddr('prefix') %}
@@ -22,7 +22,7 @@
 [Interface]
 Address = {{ _net4 | ansible.utils.ipmath(ns.my_idx) }}/{{ _prefix4 }}{% if wg_iface.ipv6_cidr %}, {{ _net6 | ansible.utils.ipmath(ns.my_idx) }}/{{ _prefix6 }}{% endif %}
 
-ListenPort = {{ wg_iface.port }}
+ListenPort = {{ wg_iface.port | mandatory }}
 PrivateKey = {{ wg_iface.nodes[inventory_hostname].private_key | mandatory }}
 MTU = {{ wg_iface.mtu | default("1420") }}
 {% for cmd in wg_iface.nodes[inventory_hostname].post_up | default([]) %}
@@ -44,7 +44,7 @@ PreDown = {{ cmd }}
 
 [Peer]
 # {{ node.key }}
-PublicKey = {{ node.value.public_key }}
+PublicKey = {{ node.value.public_key | mandatory }}
 {%       if _psk %}
 PresharedKey = {{ _psk }}
 {%       endif %}

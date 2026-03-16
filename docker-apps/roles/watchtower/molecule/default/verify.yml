@@ -1,0 +1,32 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check watchtower compose file exists
+      ansible.builtin.stat:
+        path: /etc/docker-compose/watchtower-compose.yml
+      register: compose_file
+
+    - name: Assert compose file exists
+      ansible.builtin.assert:
+        that: compose_file.stat.exists
+        fail_msg: "/etc/docker-compose/watchtower-compose.yml does not exist"
+
+    - name: Read compose file
+      ansible.builtin.slurp:
+        src: /etc/docker-compose/watchtower-compose.yml
+      register: compose_content
+
+    - name: Assert watchtower image is referenced
+      ansible.builtin.assert:
+        that: "'watchtower' in (compose_content.content | b64decode)"
+        fail_msg: "watchtower not found in compose file"
+
+    - name: Check watchtower service is enabled
+      ansible.builtin.service_facts:
+
+    - name: Assert docker-compose@watchtower service exists
+      ansible.builtin.assert:
+        that: "'docker-compose@watchtower.service' in ansible_facts.services or 'docker-compose@watchtower' in ansible_facts.services"
+        fail_msg: "docker-compose@watchtower service not found"

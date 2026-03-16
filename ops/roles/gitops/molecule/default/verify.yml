@@ -1,0 +1,40 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check gitops.sh script exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/gitops.sh
+      register: gitops_sh
+
+    - name: Assert gitops.sh exists and is executable
+      ansible.builtin.assert:
+        that:
+          - gitops_sh.stat.exists
+          - gitops_sh.stat.executable
+        fail_msg: "/usr/local/bin/gitops.sh is missing or not executable"
+
+    - name: Check required packages are installed
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Assert git is installed
+      ansible.builtin.assert:
+        that: "'git' in ansible_facts.packages"
+        fail_msg: "git is not installed"
+
+    - name: Assert cron is installed
+      ansible.builtin.assert:
+        that: "'cron' in ansible_facts.packages"
+        fail_msg: "cron is not installed"
+
+    - name: Check logrotate config for gitops
+      ansible.builtin.stat:
+        path: /etc/logrotate.d/gitops
+      register: logrotate_conf
+
+    - name: Assert logrotate config exists
+      ansible.builtin.assert:
+        that: logrotate_conf.stat.exists
+        fail_msg: "/etc/logrotate.d/gitops does not exist"
