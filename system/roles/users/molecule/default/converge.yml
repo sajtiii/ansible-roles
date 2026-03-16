@@ -5,7 +5,7 @@
   vars:
     users:
       - username: testuser
-        password: "{{ 'testpass' | password_hash('sha512') }}"
+        password: "{{ 'testpass' | password_hash('sha512', 'moleculesalt') }}"
         shell: /bin/bash
         groups:
           - sudo

@@ -6,3 +6,13 @@
     - name: Update apt cache
       ansible.builtin.apt:
         update_cache: true
+
+    - name: Replace Docker bind-mounted /etc/hosts with a regular file
+      ansible.builtin.shell: |
+        cp /etc/hosts /tmp/hosts.bak
+        umount /etc/hosts
+        cp /tmp/hosts.bak /etc/hosts
+      args:
+        executable: /bin/bash
+      changed_when: false
+      failed_when: false
