@@ -1,0 +1,14 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    monitoring:
+      enabled: true
+      container_name: prometheus-federator
+      config:
+        port: 9090
+        retention:
+          time: "14d"
+  roles:
+    - role: monitoring

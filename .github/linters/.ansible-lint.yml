@@ -1,6 +1,7 @@
 ---
 exclude_paths:
   - collections/
+  - "**/molecule/"
 
 skip_list:
   # Would require renaming all role-level default variables (e.g. autoheal: → autoheal_:)

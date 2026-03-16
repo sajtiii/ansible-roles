@@ -1,0 +1,44 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check sshd_config exists
+      ansible.builtin.stat:
+        path: /etc/ssh/sshd_config
+      register: sshd_config
+
+    - name: Assert sshd_config exists
+      ansible.builtin.assert:
+        that: sshd_config.stat.exists
+        fail_msg: "/etc/ssh/sshd_config does not exist"
+
+    - name: Read sshd_config
+      ansible.builtin.slurp:
+        src: /etc/ssh/sshd_config
+      register: sshd_config_content
+
+    - name: Assert custom port is set
+      ansible.builtin.assert:
+        that: "'Port 2222' in (sshd_config_content.content | b64decode)"
+        fail_msg: "Port 2222 not found in sshd_config"
+
+    - name: Assert PermitRootLogin is disabled
+      ansible.builtin.assert:
+        that: "'PermitRootLogin no' in (sshd_config_content.content | b64decode)"
+        fail_msg: "PermitRootLogin no not found in sshd_config"
+
+    - name: Assert PasswordAuthentication is disabled
+      ansible.builtin.assert:
+        that: "'PasswordAuthentication no' in (sshd_config_content.content | b64decode)"
+        fail_msg: "PasswordAuthentication no not found in sshd_config"
+
+    - name: Check sshd service state
+      ansible.builtin.service_facts:
+
+    - name: Assert ssh service is enabled
+      ansible.builtin.assert:
+        that: >
+          'ssh' in ansible_facts.services
+          or 'sshd' in ansible_facts.services
+        fail_msg: "ssh/sshd service not found"

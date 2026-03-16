@@ -1,0 +1,9 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    gitops:
+      repositories: []
+  roles:
+    - role: gitops

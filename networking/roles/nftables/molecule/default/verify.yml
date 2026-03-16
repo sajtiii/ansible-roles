@@ -1,0 +1,26 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check nftables package is installed
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Assert nftables is installed
+      ansible.builtin.assert:
+        that: "'nftables' in ansible_facts.packages"
+        fail_msg: "nftables is not installed"
+
+    - name: Assert netfilter-persistent is installed
+      ansible.builtin.assert:
+        that: "'netfilter-persistent' in ansible_facts.packages"
+        fail_msg: "netfilter-persistent is not installed"
+
+    - name: Check nftables service state
+      ansible.builtin.service_facts:
+
+    - name: Assert nftables service is enabled
+      ansible.builtin.assert:
+        that: "'nftables' in ansible_facts.services"
+        fail_msg: "nftables service not found"

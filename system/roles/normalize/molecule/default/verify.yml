@@ -1,0 +1,43 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Check base packages are installed
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Assert curl is installed
+      ansible.builtin.assert:
+        that: "'curl' in ansible_facts.packages"
+        fail_msg: "curl is not installed"
+
+    - name: Assert vim is installed
+      ansible.builtin.assert:
+        that: "'vim' in ansible_facts.packages"
+        fail_msg: "vim is not installed"
+
+    - name: Assert sudo is installed
+      ansible.builtin.assert:
+        that: "'sudo' in ansible_facts.packages"
+        fail_msg: "sudo is not installed"
+
+    - name: Check /etc/motd
+      ansible.builtin.stat:
+        path: /etc/motd
+      register: motd_file
+
+    - name: Assert /etc/motd exists
+      ansible.builtin.assert:
+        that: motd_file.stat.exists
+        fail_msg: "/etc/motd does not exist"
+
+    - name: Read /etc/hosts
+      ansible.builtin.slurp:
+        src: /etc/hosts
+      register: hosts_content
+
+    - name: Assert hostname is in /etc/hosts
+      ansible.builtin.assert:
+        that: "'molecule-test' in (hosts_content.content | b64decode)"
+        fail_msg: "molecule-test hostname not found in /etc/hosts"

@@ -1,0 +1,16 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    sshd:
+      port: 2222
+      permit_root_login: false
+      password_auth: false
+      max_auth_tries: 3
+      max_sessions: 3
+      x11_forwarding: false
+      agent_forwarding: false
+      tcp_forwarding: false
+  roles:
+    - role: sshd

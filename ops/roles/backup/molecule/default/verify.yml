@@ -1,0 +1,73 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check backup.sh script exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/backup.sh
+      register: backup_sh
+
+    - name: Assert backup.sh exists and is executable
+      ansible.builtin.assert:
+        that:
+          - backup_sh.stat.exists
+          - backup_sh.stat.executable
+        fail_msg: "/usr/local/bin/backup.sh is missing or not executable"
+
+    - name: Check /etc/restic directory
+      ansible.builtin.stat:
+        path: /etc/restic
+      register: restic_dir
+
+    - name: Assert /etc/restic exists with correct permissions
+      ansible.builtin.assert:
+        that:
+          - restic_dir.stat.exists
+          - restic_dir.stat.isdir
+          - restic_dir.stat.mode == '0700'
+        fail_msg: "/etc/restic directory missing or has wrong permissions"
+
+    - name: Check encryption key file
+      ansible.builtin.stat:
+        path: /etc/restic/encryption_key
+      register: enc_key
+
+    - name: Assert encryption key exists with correct permissions
+      ansible.builtin.assert:
+        that:
+          - enc_key.stat.exists
+          - enc_key.stat.mode == '0600'
+        fail_msg: "/etc/restic/encryption_key missing or has wrong permissions"
+
+    - name: Check private key file for SFTP
+      ansible.builtin.stat:
+        path: /etc/restic/id_rsa
+      register: priv_key
+
+    - name: Assert private key exists with correct permissions
+      ansible.builtin.assert:
+        that:
+          - priv_key.stat.exists
+          - priv_key.stat.mode == '0600'
+        fail_msg: "/etc/restic/id_rsa missing or has wrong permissions"
+
+    - name: Check restic package is installed
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Assert restic is installed
+      ansible.builtin.assert:
+        that: "'restic' in ansible_facts.packages"
+        fail_msg: "restic is not installed"
+
+    - name: Check cron job for backup
+      ansible.builtin.command: crontab -l -u root
+      changed_when: false
+      register: cron_output
+      failed_when: false
+
+    - name: Assert backup cron job exists
+      ansible.builtin.assert:
+        that: "'backup.sh' in cron_output.stdout"
+        fail_msg: "backup cron job not found in root crontab"

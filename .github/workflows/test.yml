@@ -1,0 +1,85 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: "molecule / ${{ matrix.collection }}.${{ matrix.role }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # system collection
+          - collection: system
+            role: users
+          - collection: system
+            role: sshd
+          - collection: system
+            role: ntp
+          - collection: system
+            role: normalize
+          - collection: system
+            role: auto_upgrades
+          - collection: system
+            role: upgrade
+          # networking collection
+          - collection: networking
+            role: nftables
+          - collection: networking
+            role: vlan
+          - collection: networking
+            role: wireguard
+          # infrastructure collection
+          - collection: infrastructure
+            role: docker
+          # monitoring collection
+          - collection: monitoring
+            role: node_exporter
+          - collection: monitoring
+            role: cadvisor
+          # ops collection
+          - collection: ops
+            role: backup
+          - collection: ops
+            role: gitops
+          # docker-apps collection
+          - collection: docker-apps
+            role: autoheal
+          - collection: docker-apps
+            role: monitoring
+          - collection: docker-apps
+            role: traefik
+          - collection: docker-apps
+            role: watchtower
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Molecule and dependencies
+        run: |
+          pip install --quiet \
+            molecule \
+            molecule-plugins[docker] \
+            ansible-core \
+            docker
+
+      - name: Run Molecule tests
+        run: molecule test
+        working-directory: ${{ matrix.collection }}/roles/${{ matrix.role }}
+        env:
+          PY_COLORS: "1"
+          ANSIBLE_FORCE_COLOR: "1"

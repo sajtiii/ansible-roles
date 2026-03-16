@@ -1,0 +1,10 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    docker:
+      metrics:
+        enabled: false
+  roles:
+    - role: docker

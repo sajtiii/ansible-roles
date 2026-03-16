@@ -1,0 +1,32 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check traefik compose file exists
+      ansible.builtin.stat:
+        path: /etc/docker-compose/traefik-compose.yml
+      register: compose_file
+
+    - name: Assert compose file exists
+      ansible.builtin.assert:
+        that: compose_file.stat.exists
+        fail_msg: "/etc/docker-compose/traefik-compose.yml does not exist"
+
+    - name: Read compose file
+      ansible.builtin.slurp:
+        src: /etc/docker-compose/traefik-compose.yml
+      register: compose_content
+
+    - name: Assert traefik image is referenced
+      ansible.builtin.assert:
+        that: "'traefik' in (compose_content.content | b64decode)"
+        fail_msg: "traefik not found in compose file"
+
+    - name: Check traefik service is enabled
+      ansible.builtin.service_facts:
+
+    - name: Assert docker-compose@traefik service exists
+      ansible.builtin.assert:
+        that: "'docker-compose@traefik' in ansible_facts.services"
+        fail_msg: "docker-compose@traefik service not found"

@@ -1,0 +1,30 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check cadvisor binary exists
+      ansible.builtin.stat:
+        path: /opt/cadvisor/cadvisor
+      register: cadvisor_binary
+
+    - name: Assert cadvisor binary exists and is executable
+      ansible.builtin.assert:
+        that:
+          - cadvisor_binary.stat.exists
+          - cadvisor_binary.stat.executable
+        fail_msg: "/opt/cadvisor/cadvisor is missing or not executable"
+
+    - name: Check cadvisor service state
+      ansible.builtin.service_facts:
+
+    - name: Assert cadvisor service is enabled
+      ansible.builtin.assert:
+        that: "'cadvisor' in ansible_facts.services"
+        fail_msg: "cadvisor service not found"
+
+    - name: Wait for cadvisor to be listening
+      ansible.builtin.wait_for:
+        port: 8080
+        timeout: 30
+        msg: "cadvisor is not listening on port 8080"

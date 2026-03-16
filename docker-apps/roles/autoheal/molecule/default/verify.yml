@@ -1,0 +1,37 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check autoheal compose file exists
+      ansible.builtin.stat:
+        path: /etc/docker-compose/autoheal-compose.yml
+      register: compose_file
+
+    - name: Assert compose file exists
+      ansible.builtin.assert:
+        that: compose_file.stat.exists
+        fail_msg: "/etc/docker-compose/autoheal-compose.yml does not exist"
+
+    - name: Read compose file
+      ansible.builtin.slurp:
+        src: /etc/docker-compose/autoheal-compose.yml
+      register: compose_content
+
+    - name: Assert autoheal image is referenced
+      ansible.builtin.assert:
+        that: "'willfarrell/autoheal' in (compose_content.content | b64decode)"
+        fail_msg: "willfarrell/autoheal image not found in compose file"
+
+    - name: Assert container name is set
+      ansible.builtin.assert:
+        that: "'autoheal' in (compose_content.content | b64decode)"
+        fail_msg: "autoheal container_name not found in compose file"
+
+    - name: Check autoheal service is enabled
+      ansible.builtin.service_facts:
+
+    - name: Assert docker-compose@autoheal service exists
+      ansible.builtin.assert:
+        that: "'docker-compose@autoheal' in ansible_facts.services"
+        fail_msg: "docker-compose@autoheal service not found"
