@@ -9,57 +9,41 @@ on:
   workflow_dispatch:
 
 jobs:
+  discover:
+    name: Discover roles
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.find.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find roles with molecule tests
+        id: find
+        run: |
+          matrix=$(
+            find . -type d -name molecule \
+              | sed 's|^\./||; s|/molecule$||' \
+              | grep '^[^/]*/roles/[^/]*$' \
+              | sort \
+              | while IFS= read -r path; do
+                  collection=$(echo "$path" | cut -d/ -f1)
+                  role=$(echo "$path" | cut -d/ -f3)
+                  echo "{\"collection\":\"$collection\",\"role\":\"$role\"}"
+                done \
+              | jq -sc '{include: .}'
+          )
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
   test:
     name: "molecule / ${{ matrix.collection }}.${{ matrix.role }}"
+    needs: discover
     runs-on: ubuntu-latest
     permissions:
       contents: read
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          # system collection
-          - collection: system
-            role: users
-          - collection: system
-            role: sshd
-          - collection: system
-            role: ntp
-          - collection: system
-            role: normalize
-          - collection: system
-            role: auto_upgrades
-          - collection: system
-            role: upgrade
-          # networking collection
-          - collection: networking
-            role: nftables
-          - collection: networking
-            role: vlan
-          - collection: networking
-            role: wireguard
-          # infrastructure collection
-          - collection: infrastructure
-            role: docker
-          # monitoring collection
-          - collection: monitoring
-            role: node_exporter
-          - collection: monitoring
-            role: cadvisor
-          # ops collection
-          - collection: ops
-            role: backup
-          - collection: ops
-            role: gitops
-          # docker-apps collection
-          - collection: docker-apps
-            role: autoheal
-          - collection: docker-apps
-            role: monitoring
-          - collection: docker-apps
-            role: traefik
-          - collection: docker-apps
-            role: watchtower
+      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v4
