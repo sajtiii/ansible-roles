@@ -28,5 +28,5 @@
 
     - name: Assert docker-compose@traefik service exists
       ansible.builtin.assert:
-        that: "'docker-compose@traefik' in ansible_facts.services"
+        that: "'docker-compose@traefik.service' in ansible_facts.services or 'docker-compose@traefik' in ansible_facts.services"
         fail_msg: "docker-compose@traefik service not found"

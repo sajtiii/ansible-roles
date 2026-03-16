@@ -22,5 +22,5 @@
 
     - name: Assert nftables service is enabled
       ansible.builtin.assert:
-        that: "'nftables' in ansible_facts.services"
+        that: "'nftables.service' in ansible_facts.services or 'nftables' in ansible_facts.services"
         fail_msg: "nftables service not found"

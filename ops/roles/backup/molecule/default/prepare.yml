@@ -6,3 +6,8 @@
     - name: Update apt cache
       ansible.builtin.apt:
         update_cache: true
+
+    - name: Install cron
+      ansible.builtin.apt:
+        name: cron
+        state: present

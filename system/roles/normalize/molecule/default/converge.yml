@@ -3,7 +3,6 @@
   hosts: all
   gather_facts: true
   vars:
-    hostname: molecule-test
     system:
       timezone: UTC
       swappiness: 10

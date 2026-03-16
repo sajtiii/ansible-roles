@@ -4,7 +4,7 @@
   gather_facts: true
   vars:
     users:
-      - name: testuser
+      - username: testuser
         password: "{{ 'testpass' | password_hash('sha512') }}"
         shell: /bin/bash
         groups:
