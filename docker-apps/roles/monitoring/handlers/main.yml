@@ -1,0 +1,6 @@
+---
+- name: Restart monitoring
+  ansible.builtin.service:
+    name: docker-compose@monitoring
+    state: restarted
+  when: not ansible_check_mode

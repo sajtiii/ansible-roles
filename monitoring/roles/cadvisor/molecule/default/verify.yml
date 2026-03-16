@@ -20,7 +20,7 @@
 
     - name: Assert cadvisor service is enabled
       ansible.builtin.assert:
-        that: "'cadvisor' in ansible_facts.services"
+        that: "'cadvisor.service' in ansible_facts.services or 'cadvisor' in ansible_facts.services"
         fail_msg: "cadvisor service not found"
 
     - name: Wait for cadvisor to be listening

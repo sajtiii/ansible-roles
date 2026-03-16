@@ -75,7 +75,11 @@ jobs:
             molecule \
             molecule-plugins[docker] \
             ansible-core \
-            docker
+            docker \
+            passlib
+
+      - name: Install Ansible collections
+        run: ansible-galaxy collection install ansible.posix community.general
 
       - name: Run Molecule tests
         run: molecule test

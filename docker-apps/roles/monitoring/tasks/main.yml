@@ -11,7 +11,7 @@
         src: prometheus.yml.j2
         dest: /srv/monitoring/prometheus.yml
         mode: "0644"
-      notify: restart monitoring
+      notify: Restart monitoring
 - ansible.builtin.include_role:
     name: base_service
   vars:

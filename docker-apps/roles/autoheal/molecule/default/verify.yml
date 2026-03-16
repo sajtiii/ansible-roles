@@ -33,5 +33,5 @@
 
     - name: Assert docker-compose@autoheal service exists
       ansible.builtin.assert:
-        that: "'docker-compose@autoheal' in ansible_facts.services"
+        that: "'docker-compose@autoheal.service' in ansible_facts.services or 'docker-compose@autoheal' in ansible_facts.services"
         fail_msg: "docker-compose@autoheal service not found"

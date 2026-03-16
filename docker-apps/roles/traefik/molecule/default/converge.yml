@@ -10,5 +10,10 @@
         enabled: false
       cert_dumper:
         enabled: false
+      config:
+        letsencrypt:
+          email: test@example.com
+          cloudflare:
+            token: testtoken
   roles:
     - role: traefik

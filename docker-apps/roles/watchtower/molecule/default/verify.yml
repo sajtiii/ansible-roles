@@ -28,5 +28,5 @@
 
     - name: Assert docker-compose@watchtower service exists
       ansible.builtin.assert:
-        that: "'docker-compose@watchtower' in ansible_facts.services"
+        that: "'docker-compose@watchtower.service' in ansible_facts.services or 'docker-compose@watchtower' in ansible_facts.services"
         fail_msg: "docker-compose@watchtower service not found"

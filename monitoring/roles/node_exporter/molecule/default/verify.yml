@@ -34,7 +34,7 @@
 
     - name: Assert node_exporter service is enabled
       ansible.builtin.assert:
-        that: "'node_exporter' in ansible_facts.services"
+        that: "'node_exporter.service' in ansible_facts.services or 'node_exporter' in ansible_facts.services"
         fail_msg: "node_exporter service not found"
 
     - name: Wait for node_exporter to be listening

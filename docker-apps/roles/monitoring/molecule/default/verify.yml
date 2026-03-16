@@ -38,5 +38,5 @@
 
     - name: Assert docker-compose@monitoring service exists
       ansible.builtin.assert:
-        that: "'docker-compose@monitoring' in ansible_facts.services"
+        that: "'docker-compose@monitoring.service' in ansible_facts.services or 'docker-compose@monitoring' in ansible_facts.services"
         fail_msg: "docker-compose@monitoring service not found"
