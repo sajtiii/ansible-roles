@@ -39,5 +39,5 @@
 
     - name: Assert hostname is in /etc/hosts
       ansible.builtin.assert:
-        that: "'molecule-test' in (hosts_content.content | b64decode)"
-        fail_msg: "molecule-test hostname not found in /etc/hosts"
+        that: "inventory_hostname in (hosts_content.content | b64decode)"
+        fail_msg: "{{ inventory_hostname }} hostname not found in /etc/hosts"
