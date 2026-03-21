@@ -1,3 +1,6 @@
+- name: Resolve IP assignments for {{ wg_iface_name }}
+  ansible.builtin.set_fact:
+    _wg_ip_config: "{{ lookup('template', role_path + '/templates/resolve_ips.j2') | from_json }}"
 - name: Deploy wireguard configuration for {{ wg_iface_name }}
   ansible.builtin.template:
     src: wg.conf.j2
@@ -11,12 +14,13 @@
     path: /etc/hosts
     marker: "# {mark} wireguard {{ wg_iface_name }}"
     block: |
-      {% set _net4 = wg_iface.ipv4_cidr | ansible.utils.ipaddr('network') %}
       {% for node in wg_iface.nodes | dict2items %}
-      {{ _net4 | ansible.utils.ipmath(loop.index) }} {{ node.key }}
-      {% if wg_iface.ipv6_cidr %}
-      {% set _net6 = wg_iface.ipv6_cidr | ansible.utils.ipaddr('network') %}
-      {{ _net6 | ansible.utils.ipmath(loop.index) }} {{ node.key }}
+      {% set _aliases = node.value.additional_hosts | default([]) %}
+      {{ _wg_ip_config.nodeIps[node.key].ipv4 }} {{ node.key }}{% for a in _aliases %} {{ a }}{% endfor %}
+
+      {% if _wg_ip_config.ipv6 %}
+      {{ _wg_ip_config.nodeIps[node.key].ipv6 }} {{ node.key }}{% for a in _aliases %} {{ a }}{% endfor %}
+
       {% endif %}
       {% endfor %}
 - name: Remove orphaned {{ wg_iface_name }} interface if service is not active

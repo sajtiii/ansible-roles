@@ -1,8 +1,19 @@
-- name: Install wireguard
+- name: Install wireguard (Debian)
   ansible.builtin.apt:
     name: wireguard
     state: latest
     update_cache: true
+  when:
+    - wireguard.install
+    - ansible_os_family == "Debian"
+- name: Install wireguard-tools (openSUSE MicroOS)
+  ansible.builtin.command:
+    cmd: transactional-update --non-interactive pkg install wireguard-tools
+  register: _wg_tu_result
+  changed_when: "'Nothing to do' not in _wg_tu_result.stdout"
+  when:
+    - wireguard.install
+    - ansible_distribution == "openSUSE MicroOS"
 - name: Ensure wireguard directory exists
   ansible.builtin.file:
     path: /etc/wireguard
@@ -34,7 +45,6 @@
       ansible.builtin.set_fact:
         _wg_stale_ifaces: >-
           {{
-
             _wg_managed_checks.results
             | selectattr('rc', 'equalto', 0)
             | map(attribute='item.path')

@@ -2,14 +2,7 @@
 {# --- Node list in dict insertion order --- #}
 {%- set _nodes = wg_iface.nodes | dict2items %}
 {%- set _is_hub_spoke = wg_iface.topology | mandatory == 'hub-spoke' %}
-{# --- Network bases and prefix lengths --- #}
-{%- set _net4 = wg_iface.ipv4_cidr | mandatory | ansible.utils.ipaddr('network') %}
-{%- set _prefix4 = wg_iface.ipv4_cidr | mandatory | ansible.utils.ipaddr('prefix') %}
-{%- if wg_iface.ipv6_cidr %}
-{%- set _net6 = wg_iface.ipv6_cidr | ansible.utils.ipaddr('network') %}
-{%- set _prefix6 = wg_iface.ipv6_cidr | ansible.utils.ipaddr('prefix') %}
-{%- endif %}
-{# --- Current node position --- #}
+{# --- Current node position (used to detect hub in hub-spoke) --- #}
 {%- set ns = namespace(my_idx=0) %}
 {%- for node in _nodes %}
 {%   if node.key == inventory_hostname %}
@@ -20,7 +13,7 @@
 {%- set _i_am_spoke = _is_hub_spoke and ns.my_idx != 1 %}
 
 [Interface]
-Address = {{ _net4 | ansible.utils.ipmath(ns.my_idx) }}/{{ _prefix4 }}{% if wg_iface.ipv6_cidr %}, {{ _net6 | ansible.utils.ipmath(ns.my_idx) }}/{{ _prefix6 }}{% endif %}
+Address = {{ _wg_ip_config.nodeIps[inventory_hostname].ipv4 }}/{{ _wg_ip_config.ipv4.prefix }}{% if _wg_ip_config.ipv6 %}, {{ _wg_ip_config.nodeIps[inventory_hostname].ipv6 }}/{{ _wg_ip_config.ipv6.prefix }}{% endif %}
 
 ListenPort = {{ wg_iface.port | mandatory }}
 PrivateKey = {{ wg_iface.nodes[inventory_hostname].private_key | mandatory }}
@@ -49,10 +42,10 @@ PublicKey = {{ node.value.public_key | mandatory }}
 PresharedKey = {{ _psk }}
 {%       endif %}
 {%       if _i_am_spoke and _peer_is_hub %}
-AllowedIPs = {{ wg_iface.ipv4_cidr }}{% if wg_iface.ipv6_cidr %}, {{ wg_iface.ipv6_cidr }}{% endif %}
+AllowedIPs = {{ _wg_ip_config.ipv4.cidr }}{% if _wg_ip_config.ipv6 %}, {{ _wg_ip_config.ipv6.cidr }}{% endif %}
 
 {%       else %}
-AllowedIPs = {{ _net4 | ansible.utils.ipmath(loop.index) }}/32{% if wg_iface.ipv6_cidr %}, {{ _net6 | ansible.utils.ipmath(loop.index) }}/128{% endif %}
+AllowedIPs = {{ _wg_ip_config.nodeIps[node.key].ipv4 }}/32{% if _wg_ip_config.ipv6 %}, {{ _wg_ip_config.nodeIps[node.key].ipv6 }}/128{% endif %}
 
 {%       endif %}
 {% if not _is_hub_spoke or _i_am_spoke %}
