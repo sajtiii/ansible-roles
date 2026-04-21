@@ -1,0 +1,15 @@
+[Unit]
+Description = Docker Compose for %I
+After = NetworkManager-wait-online.service network.target docker.service
+
+[Service]
+Type = simple
+ExecStart = /usr/bin/docker compose \
+                -f /etc/docker-compose/%i-compose.yml \
+                -p %i up
+ExecStop = /usr/bin/docker compose \
+                -f /etc/docker-compose/%i-compose.yml \
+                -p %i down
+
+[Install]
+WantedBy = default.target

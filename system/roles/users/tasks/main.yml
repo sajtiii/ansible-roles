@@ -1,0 +1,35 @@
+- name: Set root password
+  when: root_password is defined
+  ansible.builtin.user:
+    name: root
+    password: "{{ root_password }}"
+    shell: /bin/bash
+    state: present
+- name: "Create user `{{ user.key }}`"
+  loop: "{{ users | dict2items | selectattr('value', 'mapping') }}"
+  loop_control:
+    loop_var: user
+  ansible.builtin.include_tasks: create_user.yml
+- name: Read previously managed users
+  ansible.builtin.slurp:
+    src: /etc/ansible-managed-users
+  register: __managed_users_file
+  failed_when: false
+- name: Determine users to remove
+  ansible.builtin.set_fact:
+    __users_to_remove: "{{ (__managed_users_file.content | default('') | b64decode).split('\n') | select | difference(users | dict2items | selectattr('value', 'mapping') | map(attribute='key') | list) }}"
+- name: "Remove users no longer managed"
+  loop: "{{ __users_to_remove }}"
+  loop_control:
+    label: "{{ item }}"
+  ansible.builtin.user:
+    name: "{{ item }}"
+    state: absent
+    remove: "{{ users_remove_home }}"
+- name: Save managed users list
+  ansible.builtin.copy:
+    dest: /etc/ansible-managed-users
+    content: "{{ users | dict2items | selectattr('value', 'mapping') | map(attribute='key') | join('\n') }}\n"
+    owner: root
+    group: root
+    mode: "0600"

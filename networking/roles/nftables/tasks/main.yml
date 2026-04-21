@@ -1,0 +1,39 @@
+- name: Populate services to disable unnecessary firewalls
+  ansible.builtin.service_facts:
+  register: services
+- name: Stop and disable firewalld
+  when: '"firewalld" in services'
+  ansible.builtin.service:
+    name: firewalld
+    enabled: false
+    state: stopped
+- name: Stop and disable ufw
+  when: '"ufw" in services'
+  ansible.builtin.service:
+    name: ufw
+    enabled: false
+    state: stopped
+- name: Ensure nftables is installed
+  ansible.builtin.package:
+    name:
+      - nftables
+      - netfilter-persistent
+    state: latest
+- name: Deploy nftables ruleset
+  ansible.builtin.template:
+    src: ruleset.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: "0640"
+  notify: Reload nftables
+- name: Enable & Start nftables
+  ansible.builtin.service:
+    name: nftables
+    enabled: true
+    state: started
+- name: Enable & Start netfilter-persistent
+  ansible.builtin.service:
+    name: netfilter-persistent
+    enabled: true
+    state: started

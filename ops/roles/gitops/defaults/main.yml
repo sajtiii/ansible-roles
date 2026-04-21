@@ -1,0 +1,19 @@
+gitops:
+  dependencies:
+    install: true
+    packages:
+      - cron
+      - git
+      - gettext-base
+      - coreutils
+      - jq
+    exclude: []
+  bws:
+    version: "2.0.0"
+    download_url: "https://github.com/bitwarden/sdk-sm/releases/download/bws-v2.0.0/bws-x86_64-unknown-linux-gnu-2.0.0.zip"
+    server_url: ""
+  cron:
+    install: true
+  logging:
+    discord:
+      webhook_url: ""

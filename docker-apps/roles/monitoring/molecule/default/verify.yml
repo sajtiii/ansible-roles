@@ -1,0 +1,42 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check monitoring compose file exists
+      ansible.builtin.stat:
+        path: /etc/docker-compose/monitoring-compose.yml
+      register: compose_file
+
+    - name: Assert compose file exists
+      ansible.builtin.assert:
+        that: compose_file.stat.exists
+        fail_msg: "/etc/docker-compose/monitoring-compose.yml does not exist"
+
+    - name: Check prometheus.yml config
+      ansible.builtin.stat:
+        path: /srv/monitoring/prometheus.yml
+      register: prometheus_conf
+
+    - name: Assert prometheus.yml exists
+      ansible.builtin.assert:
+        that: prometheus_conf.stat.exists
+        fail_msg: "/srv/monitoring/prometheus.yml does not exist"
+
+    - name: Read prometheus.yml
+      ansible.builtin.slurp:
+        src: /srv/monitoring/prometheus.yml
+      register: prometheus_content
+
+    - name: Assert prometheus config contains scrape configs
+      ansible.builtin.assert:
+        that: "'scrape_configs' in (prometheus_content.content | b64decode)"
+        fail_msg: "scrape_configs not found in prometheus.yml"
+
+    - name: Check monitoring service is enabled
+      ansible.builtin.service_facts:
+
+    - name: Assert docker-compose@monitoring service exists
+      ansible.builtin.assert:
+        that: "'docker-compose@monitoring.service' in ansible_facts.services or 'docker-compose@monitoring' in ansible_facts.services"
+        fail_msg: "docker-compose@monitoring service not found"

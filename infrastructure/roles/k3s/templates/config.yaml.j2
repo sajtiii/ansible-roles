@@ -1,0 +1,101 @@
+{{ ansible_managed | comment }}
+
+# Server config
+{% if k3s.server %}
+server: {{ k3s.server }}
+{% endif %}
+{% if k3s.token %}
+token: {{ k3s.token }}
+{% endif %}
+
+# Node config
+{% if k3s.cluster_init and k3s.role in ['both', 'etcd'] %}
+cluster-init: true
+{% endif %}
+{% if k3s.role == 'etcd' %}
+disable-apiserver: true
+disable-controller-manager: true
+disable-scheduler: true
+{% endif %}
+{% if k3s.role == 'control-plane' %}
+disable-etcd: true
+{% endif %}
+
+# Node labels
+{% if k3s.node_labels %}
+node-label:
+{% for key, value in k3s.node_labels.items() %}
+  - "{{ key }}={{ value }}"
+{% endfor %}
+{% endif %}
+
+# Node taints
+{% if k3s.node_taints %}
+node-taint:
+{% for taint in k3s.node_taints %}
+  - "{{ taint }}"
+{% endfor %}
+{% endif %}
+
+# Disabled services 
+{% set disabled = [] %}
+{% if not k3s.traefik.enabled %}
+{% set _ = disabled.append('traefik') %}
+{% endif %}
+{% if not k3s.metrics.enabled %}
+{% set _ = disabled.append('metrics-server') %}
+{% endif %}
+{% if disabled %}
+disable:
+{% for item in disabled %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+
+# Networking
+{% if k3s.role != 'agent' %}
+{% if k3s.wireguard.enabled %}
+flannel-backend: wireguard-native
+{% endif %}
+{% if k3s.ipv6.enabled %}
+cluster-cidr: {{ k3s.ipv6.cluster_cidr }}
+service-cidr: {{ k3s.ipv6.service_cidr }}
+kube-controller-manager-arg:
+  - "node-cidr-mask-size-ipv4={{ k3s.ipv6.node_cidr_mask_size_ipv4 }}"
+  - "node-cidr-mask-size-ipv6={{ k3s.ipv6.node_cidr_mask_size_ipv6 }}"
+{% endif %}
+{% if k3s.ipv6.enabled and k3s.ipv6.masquerade %}
+enable-ipv6-masquerade: true
+{% endif %}
+{% if k3s.api_server.advertise_address %}
+advertise-address: {{ k3s.api_server.advertise_address }}
+{% endif %}
+{% if k3s.api_server.additional_tls_sans %}
+tls-san:
+{% for san in k3s.api_server.additional_tls_sans %}
+  - "{{ san }}"
+{% endfor %}
+{% endif %}
+{% endif %}
+
+# Node IPs
+{% if k3s.wireguard.enabled %}
+{% if k3s.wireguard.node_external_ip %}
+node-external-ip: {{ k3s.wireguard.node_external_ip }}
+{% elif ipv4_address is defined and ipv6_address is defined %}
+node-external-ip: {{ ipv4_address }},{{ ipv6_address }}
+{% elif ipv6_address is defined %}
+node-external-ip: {{ ipv6_address }}
+{% elif ipv4_address is defined %}
+node-external-ip: {{ ipv4_address }}
+{% endif %}
+{% endif %}
+{% if k3s.ipv6.enabled %}
+{% if k3s.ipv6.node_ip %}
+node-ip: {{ k3s.ipv6.node_ip }}
+{% elif ipv6_address is defined and ipv4_address is defined %}
+node-ip: {{ ipv6_address }},{{ ipv4_address }}
+{% elif ipv6_address is defined %}
+node-ip: {{ ipv6_address }}
+{% endif %}
+{% endif %}

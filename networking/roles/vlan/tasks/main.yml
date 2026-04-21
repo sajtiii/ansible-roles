@@ -1,0 +1,106 @@
+---
+- name: Ensure iproute2 is installed
+  ansible.builtin.package:
+    name: iproute2
+    state: present
+
+- name: Ensure isc-dhcp-client is installed
+  ansible.builtin.package:
+    name: isc-dhcp-client
+    state: present
+  when: vlans.values() | selectattr('dhcp', 'defined') | selectattr('dhcp') | list | length > 0
+
+- name: Ensure state directory exists
+  ansible.builtin.file:
+    path: /var/lib/ansible
+    state: directory
+    mode: '0755'
+
+- name: Read VLAN state file
+  ansible.builtin.slurp:
+    src: "{{ vlan_state_file }}"
+  register: _vlan_state_raw
+  ignore_errors: true
+
+# State format: {iface_name: base_iface}, e.g. {"eno1.55": "eno1", "servers": "eno1"}
+- name: Set previously managed VLAN interfaces
+  ansible.builtin.set_fact:
+    _vlans_previous: "{{ (_vlan_state_raw.content | b64decode | from_json) if _vlan_state_raw is succeeded else {} }}"
+
+- name: Build desired VLAN state
+  ansible.builtin.set_fact:
+    _vlans_desired: >-
+      {%- set ns = namespace(result={}) -%}
+      {%- for item in vlans | dict2items -%}
+        {%- set base_iface = item.value.interface | default(ansible_default_ipv4.interface) -%}
+        {%- set iface_name = item.value.name | default(base_iface ~ '.' ~ (item.key | string)) -%}
+        {%- set ns.result = ns.result | combine({iface_name: base_iface}) -%}
+      {%- endfor -%}
+      {{ ns.result }}
+
+- name: Build stale VLAN interface names
+  ansible.builtin.set_fact:
+    _vlans_stale: "{{ _vlans_previous.keys() | list | difference(_vlans_desired.keys() | list) }}"
+
+# --- Remove stale VLANs ---
+
+- name: Stop and disable stale VLAN services
+  ansible.builtin.systemd:
+    name: "vlan-{{ item }}.service"
+    state: stopped
+    enabled: false
+  loop: "{{ _vlans_stale }}"
+  failed_when: false
+
+- name: Remove stale VLAN service files
+  ansible.builtin.file:
+    path: "/etc/systemd/system/vlan-{{ item }}.service"
+    state: absent
+  loop: "{{ _vlans_stale }}"
+  notify: Reload systemd daemon
+
+# --- Create/update desired VLANs ---
+
+- name: Create dhclient config files for DHCP VLANs
+  ansible.builtin.template:
+    src: dhclient.conf.j2
+    dest: "/etc/dhcp/dhclient-{{ item.value.name | default((item.value.interface | default(ansible_default_ipv4.interface)) ~ '.' ~ (item.key | string)) }}.conf"
+    mode: '0644'
+  vars:
+    iface_name: "{{ item.value.name | default((item.value.interface | default(ansible_default_ipv4.interface)) ~ '.' ~ (item.key | string)) }}"
+    dhcp_default_route: "{{ item.value.dhcp_default_route | default(false) }}"
+  loop: "{{ vlans | dict2items }}"
+  when: item.value.dhcp | default(false)
+
+- name: Create VLAN service files
+  ansible.builtin.template:
+    src: vlan.service.j2
+    dest: "/etc/systemd/system/vlan-{{ item.key }}.service"
+    mode: '0644'
+  vars:
+    vlan_id: "{{ item.key }}"
+    iface_name: "{{ item.value.name | default((item.value.interface | default(ansible_default_ipv4.interface)) ~ '.' ~ (item.key | string)) }}"
+    base_iface: "{{ item.value.interface | default(ansible_default_ipv4.interface) }}"
+    ipv4_cidr: "{{ item.value.ipv4_cidr | default('') }}"
+    ipv6_cidr: "{{ item.value.ipv6_cidr | default('') }}"
+    dhcp: "{{ item.value.dhcp | default(false) }}"
+  loop: "{{ vlans | dict2items }}"
+  notify: Reload systemd daemon
+
+- name: Flush handlers to reload systemd before managing services
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start VLAN services
+  ansible.builtin.systemd:
+    name: "vlan-{{ item.key }}.service"
+    enabled: true
+    state: started
+  loop: "{{ vlans | dict2items }}"
+
+# --- Persist state ---
+
+- name: Write VLAN state file
+  ansible.builtin.copy:
+    content: "{{ _vlans_desired | to_json }}\n"
+    dest: "{{ vlan_state_file }}"
+    mode: '0644'

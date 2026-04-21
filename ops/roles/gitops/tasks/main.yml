@@ -1,0 +1,56 @@
+- name: Determine if bws/jq are needed
+  ansible.builtin.set_fact:
+    gitops_needs_bws: >-
+      {{ gitops.repositories | default([])
+         | selectattr('envs', 'defined')
+         | map(attribute='envs') | flatten
+         | selectattr('type', 'match', '^bitwarden-')
+         | list | length > 0 }}
+- name: Install dependencies
+  block:
+    - name: Make sure base dependencies are installed
+      when: gitops.dependencies.install
+      ansible.builtin.package:
+        name: "{{ gitops.dependencies.packages | difference(gitops.dependencies.exclude) }}"
+        state: present
+- name: Resolve repo keys
+  ansible.builtin.set_fact:
+    gitops_repositories: >-
+      {%- set ns = namespace(repos=[]) -%}
+      {%- for repo in gitops.repositories | mandatory -%}
+        {%- set key = repo.key if repo.key is defined else (repo.destination | regex_replace('[^a-zA-Z0-9-]', ''))[:57] -%}
+        {%- set ns.repos = ns.repos + [repo | combine({'key': key})] -%}
+      {%- endfor -%}
+      {{ ns.repos }}
+- name: Setup repositories
+  ansible.builtin.include_tasks: setup-repo.yml
+  with_items: "{{ gitops_repositories }}"
+- name: Find existing gitops cron files
+  ansible.builtin.find:
+    paths: /etc/cron.d
+    patterns: "gitops_*"
+  register: existing_gitops_cron_files
+- name: Remove unused gitops cron files
+  ansible.builtin.file:
+    path: "{{ cron_file }}"
+    state: absent
+  loop: "{{ existing_gitops_cron_files.files | map(attribute='path') | difference(expected_cron_files) | list }}"
+  loop_control:
+    loop_var: cron_file
+  vars:
+    expected_cron_files: "{{ gitops_repositories | map(attribute='key') | map('regex_replace', '^(.+)$', '/etc/cron.d/gitops_\\1') | list }}"
+- name: "Setup logrotate for log"
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/gitops
+    content: |
+      /var/log/gitops.log {
+          weekly
+          rotate 3
+          compress
+          missingok
+          notifempty
+          create 0640 root root
+      }
+    owner: root
+    group: root
+    mode: '0644'

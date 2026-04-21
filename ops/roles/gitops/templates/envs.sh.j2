@@ -1,0 +1,72 @@
+#!/bin/bash
+{{ ansible_managed | comment }}
+# Environment setup for: {{ item.destination }}
+
+_envs_fail() {
+  ENVS_ERROR="$1"
+  echo "[envs.sh] Error: $1" >&2
+}
+
+{% set bws_server = ('--server-url ' + gitops.bws.server_url | quote) if gitops.bws.server_url else '' %}
+{% if item.envs is defined and item.envs | length > 0 %}
+{% for env in item.envs %}
+{% if env.type == 'static' %}
+# --- static ---
+{% for key, value in env.env.items() %}
+export {{ key }}={{ value | quote }}
+{% endfor %}
+
+{% elif env.type == 'file' %}
+# --- file: {{ env.path }} ---
+if [ ! -f {{ env.path | quote }} ]; then
+  _envs_fail "Environment file not found: {{ env.path }}"
+  return 1
+fi
+# shellcheck source=/dev/null
+. {{ env.path | quote }} || { _envs_fail "Failed to source: {{ env.path }}"; return 1; }
+
+{% elif env.type == 'bitwarden-project' %}
+# --- bitwarden-project: {{ env.project_id }} ---
+_bws_output=$({{ item.destination }}/bin/bws secret list {{ env.project_id | quote }} \
+  --access-token {{ env.access_token | quote }} \
+  --output json {{ bws_server }} 2>&1) \
+  || { _envs_fail "bws failed for project {{ env.project_id }}: $_bws_output"; return 1; }
+eval "$(echo "$_bws_output" | jq -r '.[] | "export " + .key + "=" + (.value | @sh)')" \
+  || { _envs_fail "Failed to parse bws output for project {{ env.project_id }}"; return 1; }
+unset _bws_output
+
+{% elif env.type == 'bitwarden-entry' %}
+# --- bitwarden-entry: {{ env.entry_id }} ---
+_bws_output=$({{ item.destination }}/bin/bws secret get {{ env.entry_id | quote }} \
+  --access-token {{ env.access_token | quote }} \
+  --output json {{ bws_server }} 2>&1) \
+  || { _envs_fail "bws failed for entry {{ env.entry_id }}: $_bws_output"; return 1; }
+_bws_key=$(echo "$_bws_output" | jq -r '.key') \
+  || { _envs_fail "Failed to parse key from bws entry {{ env.entry_id }}"; return 1; }
+_bws_val=$(echo "$_bws_output" | jq -r '.value') \
+  || { _envs_fail "Failed to parse value from bws entry {{ env.entry_id }}"; return 1; }
+export "$_bws_key"="$_bws_val"
+unset _bws_output _bws_key _bws_val
+
+{% elif env.type == 'bitwarden-multientry' %}
+# --- bitwarden-multientry: {{ env.entry_id }} ---
+_bws_output=$({{ item.destination }}/bin/bws secret get {{ env.entry_id | quote }} \
+  --access-token {{ env.access_token | quote }} \
+  --output json {{ bws_server }} 2>&1) \
+  || { _envs_fail "bws failed for multientry {{ env.entry_id }}: $_bws_output"; return 1; }
+_bws_val=$(echo "$_bws_output" | jq -r '.value') \
+  || { _envs_fail "Failed to parse value from bws multientry {{ env.entry_id }}"; return 1; }
+while IFS= read -r _line; do
+  [ -z "$_line" ] && continue
+  [[ "$_line" == \#* ]] && continue
+  _k="${_line%%=*}"
+  _v="${_line#*=}"
+  _v="${_v#[\"\']}"
+  _v="${_v%[\"\']}"
+  export "$_k"="$_v"
+done <<< "$_bws_val"
+unset _bws_output _bws_val _line _k _v
+
+{% endif %}
+{% endfor %}
+{% endif %}

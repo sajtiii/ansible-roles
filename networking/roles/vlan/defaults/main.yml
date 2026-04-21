@@ -1,0 +1,3 @@
+---
+vlans: {}
+vlan_state_file: /var/lib/ansible/vlans_state.json

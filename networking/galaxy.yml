@@ -1,0 +1,9 @@
+namespace: sajtii
+name: networking
+version: 1.0.0
+description: Ansible roles for networking
+license:
+  - GPL-2.0-or-later
+readme: README.md
+authors:
+  - Sajtii

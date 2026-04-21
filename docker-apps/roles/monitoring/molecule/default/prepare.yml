@@ -1,0 +1,32 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Create /etc/docker-compose directory
+      ansible.builtin.file:
+        path: /etc/docker-compose
+        state: directory
+        mode: "0755"
+
+    - name: Create stub docker-compose@.service systemd unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/docker-compose@.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Docker Compose Application Service (%i)
+          After=network.target
+
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/bin/true
+          ExecStop=/bin/true
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: true

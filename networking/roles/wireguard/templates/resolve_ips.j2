@@ -1,0 +1,35 @@
+{%- set _net4 = wg_iface.ipv4.cidr | mandatory | ansible.utils.ipaddr('network') -%}
+{%- set _prefix4 = wg_iface.ipv4.cidr | mandatory | ansible.utils.ipaddr('prefix') -%}
+{%- if wg_iface.ipv6 is defined -%}
+{%-   set _net6 = wg_iface.ipv6.cidr | mandatory | ansible.utils.ipaddr('network') -%}
+{%-   set _prefix6 = wg_iface.ipv6.cidr | mandatory | ansible.utils.ipaddr('prefix') -%}
+{%- endif -%}
+{%- set _auto_idx = namespace(val=0) -%}
+{%- set _node_ips = namespace(map={}) -%}
+{%- for node in wg_iface.nodes | dict2items -%}
+{%-   if node.value.ipv4 is defined and node.value.ipv4 -%}
+{%-     set _ip4 = node.value.ipv4 -%}
+{%-   elif wg_iface.ipv4.auto_assign is defined and wg_iface.ipv4.auto_assign.enabled | default(false) -%}
+{%-     set _ip4 = wg_iface.ipv4.auto_assign.pool_start | ansible.utils.ipmath(_auto_idx.val) -%}
+{%-     set _auto_idx.val = _auto_idx.val + 1 -%}
+{%-   else -%}
+{%-     set _ip4 = _net4 | ansible.utils.ipmath(loop.index) -%}
+{%-   endif -%}
+{%-   if wg_iface.ipv6 is defined -%}
+{#-     Derive IPv6 from IPv4 last octet: treat decimal digits as hex (e.g. .52 -> ::52) -#}
+{%-     set _hex_offset = namespace(val=0) -%}
+{%-     for ch in _ip4.split('.')[-1] -%}
+{%-       set _hex_offset.val = _hex_offset.val * 16 + ch | int -%}
+{%-     endfor -%}
+{%-     set _ip6 = _net6 | ansible.utils.ipmath(_hex_offset.val) -%}
+{%-   else -%}
+{%-     set _ip6 = '' -%}
+{%-   endif -%}
+{%-   set _node_ips.map = _node_ips.map | combine({node.key: {'ipv4': _ip4, 'ipv6': _ip6}}) -%}
+{%- endfor -%}
+{%- set _result = {
+  'ipv4': {'cidr': wg_iface.ipv4.cidr, 'prefix': _prefix4},
+  'ipv6': ({'cidr': wg_iface.ipv6.cidr, 'prefix': _prefix6} if wg_iface.ipv6 is defined else {}),
+  'nodeIps': _node_ips.map
+} -%}
+{{ _result | to_json }}

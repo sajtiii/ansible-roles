@@ -1,0 +1,12 @@
+- name: "Update docker-app-{{ name }}"
+  ansible.builtin.command:
+    cmd: docker compose -f /srv/{{ name }}/docker-compose.yml up -d
+  changed_when: true
+  when:
+    - not ansible_check_mode
+- name: "Restart docker-app-{{ name }}"
+  ansible.builtin.command:
+    cmd: docker compose -f /srv/{{ name }}/docker-compose.yml restart
+  changed_when: true
+  when:
+    - not ansible_check_mode

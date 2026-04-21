@@ -1,0 +1,83 @@
+- name: "Create gitops base directory for {{ item.destination | mandatory }}"
+  ansible.builtin.file:
+    path: "{{ item.destination }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+- name: "Copy gitops script to {{ item.destination }}"
+  ansible.builtin.copy:
+    src: gitops.sh
+    dest: "{{ item.destination }}/gitops.sh"
+    owner: root
+    group: root
+    mode: '0755'
+- name: "Write gitops config to {{ item.destination }}"
+  when: gitops.logging.discord.webhook_url | length > 0
+  ansible.builtin.copy:
+    dest: "{{ item.destination }}/gitops.conf"
+    content: "DISCORD_WEBHOOK_URL={{ gitops.logging.discord.webhook_url }}\n"
+    owner: root
+    group: root
+    mode: '0600'
+- name: "Install bws binary to {{ item.destination }}/bin"
+  when: item.envs is defined and item.envs | selectattr('type', 'match', '^bitwarden-') | list | length > 0
+  block:
+    - name: "Download bws archive locally"
+      ansible.builtin.get_url:
+        url: "{{ gitops.bws.download_url }}"
+        dest: "/tmp/bws-{{ gitops.bws.version }}.zip"
+        mode: '0644'
+      register: _download_binary
+      until: _download_binary is succeeded
+      retries: 5
+      delay: 2
+      delegate_to: localhost
+      become: false
+      check_mode: false
+    - name: "Extract bws binary locally"
+      ansible.builtin.unarchive:
+        src: "/tmp/bws-{{ gitops.bws.version }}.zip"
+        dest: "/tmp/"
+        creates: "/tmp/bws"
+      delegate_to: localhost
+      become: false
+      check_mode: false
+    - name: "Create bin directory"
+      ansible.builtin.file:
+        path: "{{ item.destination }}/bin"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    - name: "Copy bws binary to {{ item.destination }}/bin"
+      ansible.builtin.copy:
+        src: "/tmp/bws"
+        dest: "{{ item.destination }}/bin/bws"
+        owner: root
+        group: root
+        mode: '0500'
+- name: "Generate envs.sh for {{ item.destination }}"
+  ansible.builtin.template:
+    src: envs.sh.j2
+    dest: "{{ item.destination }}/envs.sh"
+    owner: root
+    group: root
+    mode: '0500'
+- name: "Clone git repository for {{ item.destination }}"
+  ansible.builtin.git:
+    repo: "{{ item.url | mandatory }}"
+    dest: "{{ item.destination }}/repository"
+    version: "{{ item.version | default('main') }}"
+    update: false
+  register: git_clone_result
+- name: "Run gitops script once to initialize" # noqa: no-handler
+  when: git_clone_result.changed
+  ansible.builtin.command: "{{ item.destination }}/gitops.sh --force-update {{ item.path | default('/') }}"
+  changed_when: true
+- name: "Add gitops script to cron.d for {{ item.destination }}"
+  when: gitops.cron.install
+  ansible.builtin.copy:
+    dest: "/etc/cron.d/gitops_{{ item.key }}"
+    content: "{{ item.schedule | default('*/5 * * * *') }} root {{ item.destination }}/gitops.sh {{ item.path | default('/') }} >> /var/log/gitops.log 2>&1\n"
+    mode: "0644"

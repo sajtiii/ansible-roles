@@ -1,0 +1,21 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    backup:
+      encryption_key: "molecule-test-encryption-key-placeholder"
+      folders:
+        - /etc
+      repository:
+        base_path: /backups
+        sftp:
+          hostname: backup.example.com
+          port: 22
+          user: backupuser
+          private_key: |
+            -----BEGIN OPENSSH PRIVATE KEY-----
+            dGVzdC1rZXktY29udGVudC1mb3ItbW9sZWN1bGUtdGVzdGluZw==
+            -----END OPENSSH PRIVATE KEY-----
+  roles:
+    - role: backup

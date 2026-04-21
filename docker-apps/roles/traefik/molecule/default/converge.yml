@@ -1,0 +1,19 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    traefik:
+      enabled: true
+      container_name: traefik
+      metrics:
+        enabled: false
+      cert_dumper:
+        enabled: false
+      config:
+        letsencrypt:
+          email: test@example.com
+          cloudflare:
+            token: testtoken
+  roles:
+    - role: traefik

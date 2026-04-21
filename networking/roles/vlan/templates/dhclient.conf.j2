@@ -1,0 +1,6 @@
+# Managed by Ansible - do not edit manually
+interface "{{ iface_name }}" {
+{% if not dhcp_default_route %}
+    ignore routers;
+{% endif %}
+}
