@@ -48,6 +48,29 @@ fail() {
   exit 1
 }
 
+# Retry a command, riding out transient failures (network/DNS, flaky remotes, ...).
+# Captures combined output and echoes only the final attempt's output, so callers
+# can stream it or capture it via $(...) without retry diagnostics leaking in.
+# Returns the last exit code. Tunable via RETRY_MAX / RETRY_DELAY (seconds).
+retry() {
+  local _max="${RETRY_MAX:-5}" _delay="${RETRY_DELAY:-3}" _attempt=1 _out _rc
+  while :; do
+    _out=$("$@" 2>&1)
+    _rc=$?
+    if [ "$_rc" -eq 0 ]; then
+      [ -n "$_out" ] && printf '%s\n' "$_out"
+      return 0
+    fi
+    if [ "$_attempt" -ge "$_max" ]; then
+      [ -n "$_out" ] && printf '%s\n' "$_out"
+      return "$_rc"
+    fi
+    log "retry: '$1' failed (rc=$_rc), attempt $_attempt/$_max; retrying in ${_delay}s" >&2
+    sleep "$_delay"
+    _attempt=$((_attempt + 1))
+  done
+}
+
 # Updates or creates a cron job to run this script periodically.
 cronjob() {
   if [ $# -ne 2 ]; then
@@ -80,7 +103,7 @@ hook() {
   fi
 }
 
-export -f log fail notify_discord cronjob
+export -f log fail notify_discord cronjob retry
 
 DESTINATION="$(cd "$(dirname "$0")" && pwd)"
 FORCE_UPDATE=0
@@ -131,7 +154,7 @@ cd "$DESTINATION/repository" || fail "Failed to change directory to $DESTINATION
 
 hook "before"
 
-git fetch --all --prune --tags || fail "Failed to fetch from remote repository."
+retry git fetch --all --prune --tags || fail "Failed to fetch from remote repository."
 echo $(date +%s) > "$DESTINATION/last-fetch"
 
 # Determine current branch and remote ref to compare
@@ -157,9 +180,9 @@ if [ "$has_git_changes" -eq 1 ] || [ "$has_env_changes" -eq 1 ] || [ "$FORCE_UPD
     # and ensure submodules follow the repository state.
     git reset --hard "$remote_ref" || fail "Failed to reset to $remote_ref."
     git clean -fdx || fail "Failed to remove untracked files."
-    git pull --rebase --recurse-submodules || fail "Failed to pull latest changes."
+    retry git pull --rebase --recurse-submodules || fail "Failed to pull latest changes."
     git submodule sync --recursive || fail "Failed to sync submodules."
-    git submodule update --init --recursive --force || fail "Failed to update submodules."
+    retry git submodule update --init --recursive --force || fail "Failed to update submodules."
   fi
   hook "post-pull"
 
