@@ -27,9 +27,9 @@ fi
 
 {% elif env.type == 'bitwarden-project' %}
 # --- bitwarden-project: {{ env.project_id }} ---
-_bws_output=$({{ item.destination }}/bin/bws secret list {{ env.project_id | quote }} \
+_bws_output=$(retry {{ item.destination }}/bin/bws secret list {{ env.project_id | quote }} \
   --access-token {{ env.access_token | quote }} \
-  --output json {{ bws_server }} 2>&1) \
+  --output json {{ bws_server }}) \
   || { _envs_fail "bws failed for project {{ env.project_id }}: $_bws_output"; return 1; }
 eval "$(echo "$_bws_output" | jq -r '.[] | "export " + .key + "=" + (.value | @sh)')" \
   || { _envs_fail "Failed to parse bws output for project {{ env.project_id }}"; return 1; }
@@ -37,9 +37,9 @@ unset _bws_output
 
 {% elif env.type == 'bitwarden-entry' %}
 # --- bitwarden-entry: {{ env.entry_id }} ---
-_bws_output=$({{ item.destination }}/bin/bws secret get {{ env.entry_id | quote }} \
+_bws_output=$(retry {{ item.destination }}/bin/bws secret get {{ env.entry_id | quote }} \
   --access-token {{ env.access_token | quote }} \
-  --output json {{ bws_server }} 2>&1) \
+  --output json {{ bws_server }}) \
   || { _envs_fail "bws failed for entry {{ env.entry_id }}: $_bws_output"; return 1; }
 _bws_key=$(echo "$_bws_output" | jq -r '.key') \
   || { _envs_fail "Failed to parse key from bws entry {{ env.entry_id }}"; return 1; }
@@ -50,9 +50,9 @@ unset _bws_output _bws_key _bws_val
 
 {% elif env.type == 'bitwarden-multientry' %}
 # --- bitwarden-multientry: {{ env.entry_id }} ---
-_bws_output=$({{ item.destination }}/bin/bws secret get {{ env.entry_id | quote }} \
+_bws_output=$(retry {{ item.destination }}/bin/bws secret get {{ env.entry_id | quote }} \
   --access-token {{ env.access_token | quote }} \
-  --output json {{ bws_server }} 2>&1) \
+  --output json {{ bws_server }}) \
   || { _envs_fail "bws failed for multientry {{ env.entry_id }}: $_bws_output"; return 1; }
 _bws_val=$(echo "$_bws_output" | jq -r '.value') \
   || { _envs_fail "Failed to parse value from bws multientry {{ env.entry_id }}"; return 1; }
