@@ -69,4 +69,4 @@ Set `wireguard.install: false` to skip installation on other distributions.
 
 - Each host only configures interfaces where it appears in `nodes`.
 - Ansible-managed config files for interfaces no longer in `wireguard.interfaces` are automatically stopped, disabled, and removed.
-- `/etc/wireguard/hosts` is updated with WireGuard IP addresses (and any `additional_hosts` aliases) for all nodes in each interface.
+- `/etc/wireguard/hosts/<interface>` is written on the hub node (hub-spoke) or the first node (mesh) with WireGuard IP addresses and any `additional_hosts` aliases for all nodes in that interface. It is intended for use as a `hostsdir` source by a DNS server such as dnsmasq.
