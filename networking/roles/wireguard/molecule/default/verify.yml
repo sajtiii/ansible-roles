@@ -25,6 +25,19 @@
           - wg_dir.stat.mode == '0700'
         fail_msg: "/etc/wireguard directory missing or has wrong permissions"
 
+    - name: Check /etc/wireguard/hosts directory
+      ansible.builtin.stat:
+        path: /etc/wireguard/hosts
+      register: wg_hosts_dir
+
+    - name: Assert /etc/wireguard/hosts exists with correct permissions
+      ansible.builtin.assert:
+        that:
+          - wg_hosts_dir.stat.exists
+          - wg_hosts_dir.stat.isdir
+          - wg_hosts_dir.stat.mode == '0755'
+        fail_msg: "/etc/wireguard/hosts directory missing or has wrong permissions"
+
     - name: Assert no stale config files exist (empty interfaces)
       ansible.builtin.find:
         paths: /etc/wireguard
