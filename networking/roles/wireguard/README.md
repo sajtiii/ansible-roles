@@ -47,7 +47,7 @@ wireguard:
           ipv4: "10.10.0.10"      # optional, explicit IP
           endpoint: "1.2.3.4"    # optional, defaults to inventory_hostname
           preshared_key: ""      # optional, overrides interface-level preshared_key
-          additional_hosts: []   # extra hostname aliases in /etc/hosts (same WireGuard IP)
+          additional_hosts: []   # extra hostname aliases in /etc/wireguard/hosts (same WireGuard IP)
           post_up: []            # optional, list of PostUp commands (wg-quick hook)
           pre_down: []           # optional, list of PreDown commands (wg-quick hook)
         myhost2:
@@ -69,4 +69,4 @@ Set `wireguard.install: false` to skip installation on other distributions.
 
 - Each host only configures interfaces where it appears in `nodes`.
 - Ansible-managed config files for interfaces no longer in `wireguard.interfaces` are automatically stopped, disabled, and removed.
-- `/etc/hosts` is updated with WireGuard IP addresses (and any `additional_hosts` aliases) for all nodes in each interface.
+- `/etc/wireguard/hosts` is updated with WireGuard IP addresses (and any `additional_hosts` aliases) for all nodes in each interface.
