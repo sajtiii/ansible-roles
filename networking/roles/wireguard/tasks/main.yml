@@ -21,6 +21,13 @@
     owner: root
     group: root
     mode: "0700"
+- name: Ensure wireguard hosts directory exists
+  ansible.builtin.file:
+    path: /etc/wireguard/hosts
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
 - name: Remove unused wireguard interfaces
   block:
     - name: Find existing WireGuard config files
@@ -66,10 +73,9 @@
         path: "/etc/wireguard/{{ item }}.conf"
         state: absent
       loop: "{{ _wg_stale_ifaces }}"
-    - name: Remove stale WireGuard hosts file entries
-      ansible.builtin.blockinfile:
-        path: /etc/hosts
-        marker: "# {mark} wireguard {{ item }}"
+    - name: Remove stale WireGuard hosts files
+      ansible.builtin.file:
+        path: "/etc/wireguard/hosts/{{ item }}"
         state: absent
       loop: "{{ _wg_stale_ifaces }}"
 - name: "Configure wireguard interfaces"
