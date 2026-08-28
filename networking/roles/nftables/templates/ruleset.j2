@@ -1,0 +1,66 @@
+#!/usr/sbin/nft -f
+
+{{ ansible_managed | comment }}
+
+
+flush ruleset
+
+table ip filter {
+    chain INPUT {
+        type filter hook input priority 0; policy drop;
+
+        ct state invalid drop
+        ct state { established, related } counter accept
+
+        iifname { lo } counter accept
+
+        {% for port in nftables.ipv4.allowed_ports %}
+            {{ "ip saddr " + port.source if port.source is defined else "" }} {{ port.protocol | default('tcp') }} dport {{ port.port | mandatory }} accept
+        {% endfor %}
+
+        jump REJECT
+    }
+
+    chain REJECT {
+        reject with icmp type port-unreachable
+    }
+
+    chain FORWARD {
+        type filter hook forward priority 0; policy drop;
+        iifname { lo } accept
+    }
+
+    chain OUTPUT {
+        type filter hook output priority 0; policy accept;
+    }
+}
+
+table ip6 filter {
+    chain INPUT {
+        type filter hook input priority 0; policy drop;
+
+        ct state invalid drop
+        ct state { established, related } accept
+
+        iifname { lo } accept
+        
+        {% for port in nftables.ipv6.allowed_ports %}
+            {{ "ip6 saddr " + port.source if port.source is defined else "" }} {{ port.protocol | default('tcp') }} dport {{ port.port | mandatory }} accept
+        {% endfor %}
+
+        jump REJECT
+    }
+
+    chain REJECT {
+        reject with icmpv6 type port-unreachable
+    }
+
+    chain FORWARD {
+        type filter hook forward priority 0; policy drop;
+        iifname { lo } accept
+    }
+
+    chain OUTPUT {
+        type filter hook output priority 0; policy accept;
+    }
+}

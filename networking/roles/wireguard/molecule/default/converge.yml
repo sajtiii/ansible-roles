@@ -1,0 +1,10 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    wireguard:
+      install: true
+      interfaces: {}
+  roles:
+    - role: wireguard

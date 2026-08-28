@@ -1,0 +1,5 @@
+nftables:
+  ipv4:
+    allowed_ports: []
+  ipv6:
+    allowed_ports: []

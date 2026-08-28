@@ -1,0 +1,5 @@
+autoheal:
+  enabled: true
+  container_name: autoheal
+  config:
+    interval: 30

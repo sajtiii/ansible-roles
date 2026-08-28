@@ -1,0 +1,11 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    system:
+      timezone: UTC
+      swappiness: 10
+      motd: "Managed by Ansible - molecule test\n"
+  roles:
+    - role: normalize

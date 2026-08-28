@@ -1,0 +1,32 @@
+# Managed by Ansible - do not edit manually
+[Unit]
+Description=VLAN {{ iface_name }} (ID {{ vlan_id }} on {{ base_iface }})
+After=network.target
+
+[Service]
+{% if dhcp %}
+Type=forking
+PIDFile=/run/dhclient-{{ iface_name }}.pid
+ExecStartPre=-/sbin/ip link delete {{ iface_name }}
+ExecStartPre=/sbin/ip link add link {{ base_iface }} name {{ iface_name }} type vlan id {{ vlan_id }}
+ExecStartPre=/sbin/ip link set {{ iface_name }} up
+ExecStart=/sbin/dhclient -cf /etc/dhcp/dhclient-{{ iface_name }}.conf -pf /run/dhclient-{{ iface_name }}.pid {{ iface_name }}
+ExecStop=/sbin/dhclient -r -cf /etc/dhcp/dhclient-{{ iface_name }}.conf -pf /run/dhclient-{{ iface_name }}.pid {{ iface_name }}
+ExecStopPost=-/sbin/ip link delete {{ iface_name }}
+{% else %}
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=-/sbin/ip link delete {{ iface_name }}
+ExecStart=/sbin/ip link add link {{ base_iface }} name {{ iface_name }} type vlan id {{ vlan_id }}
+ExecStart=/sbin/ip link set {{ iface_name }} up
+{% if ipv4_cidr %}
+ExecStart=/sbin/ip addr add {{ ipv4_cidr }} dev {{ iface_name }}
+{% endif %}
+{% if ipv6_cidr %}
+ExecStart=/sbin/ip addr add {{ ipv6_cidr }} dev {{ iface_name }}
+{% endif %}
+ExecStop=-/sbin/ip link delete {{ iface_name }}
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target

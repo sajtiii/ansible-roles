@@ -1,0 +1,26 @@
+- name: "Create user `{{ user.key }}`"
+  ansible.builtin.user:
+    name: "{{ user.key | mandatory }}"
+    password: "{{ user.value.password | mandatory }}"
+    shell: "{{ user.value.shell | default('/bin/bash') }}"
+    comment: "{{ user.value.name | default('') }}"
+    groups: "{{ user.value.groups | default([]) | join(',') }}"
+    home: "{{ user.value.home | default('/home/' + user.key) }}"
+    append: true
+    create_home: true
+    state: present
+- name: "Make sure .ssh directory exists for user `{{ user.key }}`"
+  ansible.builtin.file:
+    path: "{{ user.value.home | default('/home/' + user.key) }}/.ssh"
+    state: directory
+    owner: "{{ user.key | mandatory }}"
+    group: "{{ user.key | mandatory }}"
+    mode: "0700"
+- name: "Set authorized keys for user `{{ user.key }}`"
+  when: user.value.authorized_keys is defined
+  ansible.builtin.copy:
+    dest: "{{ user.value.home | default('/home/' + user.key) }}/.ssh/authorized_keys"
+    content: "{{ user.value.authorized_keys | default([]) | join('\n') }}"
+    owner: "{{ user.key | mandatory }}"
+    group: "{{ user.key | mandatory }}"
+    mode: "0600"

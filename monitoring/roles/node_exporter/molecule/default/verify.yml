@@ -1,0 +1,44 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check node_exporter binary exists
+      ansible.builtin.stat:
+        path: /opt/node_exporter/node_exporter
+      register: ne_binary
+
+    - name: Assert node_exporter binary exists and is executable
+      ansible.builtin.assert:
+        that:
+          - ne_binary.stat.exists
+          - ne_binary.stat.executable
+        fail_msg: "/opt/node_exporter/node_exporter is missing or not executable"
+
+    - name: Check node_exporter user exists
+      ansible.builtin.command: id node_exporter
+      changed_when: false
+
+    - name: Check node_exporter config directory
+      ansible.builtin.stat:
+        path: /etc/node_exporter
+      register: ne_config_dir
+
+    - name: Assert config directory exists
+      ansible.builtin.assert:
+        that: ne_config_dir.stat.exists and ne_config_dir.stat.isdir
+        fail_msg: "/etc/node_exporter config directory does not exist"
+
+    - name: Check node_exporter service state
+      ansible.builtin.service_facts:
+
+    - name: Assert node_exporter service is enabled
+      ansible.builtin.assert:
+        that: "'node_exporter.service' in ansible_facts.services or 'node_exporter' in ansible_facts.services"
+        fail_msg: "node_exporter service not found"
+
+    - name: Wait for node_exporter to be listening
+      ansible.builtin.wait_for:
+        port: 9100
+        timeout: 30
+        msg: "node_exporter is not listening on port 9100"

@@ -1,0 +1,43 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check iproute2 is installed
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Assert iproute2 is installed
+      ansible.builtin.assert:
+        that: "'iproute2' in ansible_facts.packages"
+        fail_msg: "iproute2 is not installed"
+
+    - name: Check state directory exists
+      ansible.builtin.stat:
+        path: /var/lib/ansible
+      register: state_dir
+
+    - name: Assert state directory exists
+      ansible.builtin.assert:
+        that: state_dir.stat.exists and state_dir.stat.isdir
+        fail_msg: "/var/lib/ansible state directory does not exist"
+
+    - name: Check VLAN state file
+      ansible.builtin.stat:
+        path: /var/lib/ansible/vlans_state.json
+      register: state_file
+
+    - name: Assert VLAN state file exists
+      ansible.builtin.assert:
+        that: state_file.stat.exists
+        fail_msg: "vlans_state.json does not exist"
+
+    - name: Read VLAN state file
+      ansible.builtin.slurp:
+        src: /var/lib/ansible/vlans_state.json
+      register: state_content
+
+    - name: Assert VLAN state file contains empty object for empty vlans
+      ansible.builtin.assert:
+        that: (state_content.content | b64decode | from_json) == {}
+        fail_msg: "VLAN state file does not contain empty object"

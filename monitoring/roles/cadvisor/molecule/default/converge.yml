@@ -1,0 +1,11 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    cadvisor:
+      version: 0.53.0
+      host: 0.0.0.0
+      port: 8080
+  roles:
+    - role: cadvisor

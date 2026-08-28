@@ -1,0 +1,62 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check Docker packages are installed
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Assert docker-ce is installed
+      ansible.builtin.assert:
+        that: "'docker-ce' in ansible_facts.packages"
+        fail_msg: "docker-ce is not installed"
+
+    - name: Assert docker-ce-cli is installed
+      ansible.builtin.assert:
+        that: "'docker-ce-cli' in ansible_facts.packages"
+        fail_msg: "docker-ce-cli is not installed"
+
+    - name: Check dx utility exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/dx
+      register: dx_util
+
+    - name: Assert dx utility exists and is executable
+      ansible.builtin.assert:
+        that:
+          - dx_util.stat.exists
+          - dx_util.stat.executable
+        fail_msg: "/usr/local/bin/dx is missing or not executable"
+
+    - name: Check docker daemon config
+      ansible.builtin.stat:
+        path: /etc/docker/daemon.json
+      register: daemon_json
+
+    - name: Assert daemon.json exists
+      ansible.builtin.assert:
+        that: daemon_json.stat.exists
+        fail_msg: "/etc/docker/daemon.json does not exist"
+
+    - name: Check /etc/docker-compose directory
+      ansible.builtin.stat:
+        path: /etc/docker-compose
+      register: compose_dir
+
+    - name: Assert /etc/docker-compose exists
+      ansible.builtin.assert:
+        that: compose_dir.stat.exists and compose_dir.stat.isdir
+        fail_msg: "/etc/docker-compose directory does not exist"
+
+    - name: Check docker group exists
+      ansible.builtin.command: getent group docker
+      changed_when: false
+
+    - name: Check docker service state
+      ansible.builtin.service_facts:
+
+    - name: Assert docker service is present
+      ansible.builtin.assert:
+        that: "'docker' in ansible_facts.services"
+        fail_msg: "docker service not found"

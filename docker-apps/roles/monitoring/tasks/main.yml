@@ -1,0 +1,20 @@
+- name: Create configuration for monitoring if enabled
+  when: monitoring.enabled
+  block:
+    - name: Create monitoring configuration directory
+      ansible.builtin.file:
+        path: /srv/monitoring
+        state: directory
+        mode: "0755"
+    - name: Create Prometheus configuration
+      ansible.builtin.template:
+        src: prometheus.yml.j2
+        dest: /srv/monitoring/prometheus.yml
+        mode: "0644"
+      notify: Restart monitoring
+- name: Include base_service role for monitoring
+  ansible.builtin.include_role:
+    name: base_service
+  vars:
+    name: monitoring
+    enabled: "{{ monitoring.enabled }}"

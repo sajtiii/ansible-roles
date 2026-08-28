@@ -1,0 +1,4 @@
+ntp:
+  servers:
+    - time.cloudflare.com
+    - time.google.com

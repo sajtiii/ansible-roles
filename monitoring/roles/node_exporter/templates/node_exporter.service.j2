@@ -1,0 +1,36 @@
+{{ ansible_managed | comment }}
+
+[Unit]
+Description=Prometheus Node Exporter
+After=network-online.target
+
+[Service]
+Type=simple
+User=node_exporter
+Group=node_exporter
+ExecStart=/opt/node_exporter/node_exporter --collector.systemd \
+    --web.config.file=/etc/node_exporter/config.yaml \
+    --web.listen-address={{ node_exporter.host | mandatory }}:{{ node_exporter.port | mandatory }}
+SyslogIdentifier=node_exporter
+Restart=always
+RestartSec=1
+StartLimitInterval=0
+
+{% set ns = namespace(protect_home = 'yes') %}
+{% for m in ansible_mounts if m.mount.startswith('/home') %}
+{%   set ns.protect_home = 'read-only' %}
+{% endfor %}
+ProtectHome={{ ns.protect_home }}
+NoNewPrivileges=yes
+
+{% if (ansible_facts.packages.systemd | first).version is version('232', '>=') %}
+ProtectSystem=strict
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=yes
+{% else %}
+ProtectSystem=full
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target

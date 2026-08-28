@@ -1,0 +1,24 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Verify apt cache was updated (dpkg log exists)
+      ansible.builtin.stat:
+        path: /var/log/dpkg.log
+      register: dpkg_log
+
+    - name: Assert dpkg log exists
+      ansible.builtin.assert:
+        that: dpkg_log.stat.exists
+        fail_msg: "/var/log/dpkg.log does not exist"
+
+    - name: Check autoremove marker (apt lists)
+      ansible.builtin.stat:
+        path: /var/lib/apt/lists
+      register: apt_lists
+
+    - name: Assert apt lists directory exists
+      ansible.builtin.assert:
+        that: apt_lists.stat.exists
+        fail_msg: "/var/lib/apt/lists does not exist"

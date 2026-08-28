@@ -1,0 +1,12 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    autoheal:
+      enabled: true
+      container_name: autoheal
+      config:
+        interval: 30
+  roles:
+    - role: autoheal

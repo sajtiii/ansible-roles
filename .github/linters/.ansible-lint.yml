@@ -1,0 +1,41 @@
+---
+exclude_paths:
+  - collections/
+
+mock_roles:
+  - auto_upgrades
+  - autoheal
+  - backup
+  - cadvisor
+  - docker
+  - gitops
+  - monitoring
+  - nftables
+  - node_exporter
+  - normalize
+  - ntp
+  - sshd
+  - traefik
+  - upgrade
+  - users
+  - vlan
+  - watchtower
+  - wireguard
+
+skip_list:
+  # Would require renaming all role-level default variables (e.g. autoheal: → autoheal_:)
+  - var-naming[no-role-prefix]
+  # Would require renaming pass-through vars (name/enabled) in include_role calls and all callees
+  - var-naming[no-reserved]
+  # Using state: latest is intentional in these roles
+  - package-latest
+  # Task names intentionally use Jinja2 templates for clarity
+  - name[template]
+  # galaxy.yml files are not published collections, schema/galaxy compliance not required
+  - schema[galaxy]
+  - galaxy[no-changelog]
+  - galaxy[tags]
+  - galaxy[no-repository]
+  - galaxy[no-runtime]
+  # Long URLs and complex Jinja2 expressions unavoidably exceed 160 chars
+  - yaml[line-length]

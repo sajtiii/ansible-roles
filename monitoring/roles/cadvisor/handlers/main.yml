@@ -1,0 +1,7 @@
+- name: Restart cadvisor
+  listen: restart cadvisor
+  ansible.builtin.service:
+    name: cadvisor
+    state: restarted
+  when:
+    - not ansible_check_mode

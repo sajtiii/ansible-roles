@@ -1,0 +1,42 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check 20auto-upgrades config
+      ansible.builtin.stat:
+        path: /etc/apt/apt.conf.d/20auto-upgrades
+      register: auto_upgrades_conf
+
+    - name: Assert 20auto-upgrades exists
+      ansible.builtin.assert:
+        that: auto_upgrades_conf.stat.exists
+        fail_msg: "/etc/apt/apt.conf.d/20auto-upgrades does not exist"
+
+    - name: Check 50unattended-upgrades config
+      ansible.builtin.stat:
+        path: /etc/apt/apt.conf.d/50unattended-upgrades
+      register: unattended_conf
+
+    - name: Assert 50unattended-upgrades exists
+      ansible.builtin.assert:
+        that: unattended_conf.stat.exists
+        fail_msg: "/etc/apt/apt.conf.d/50unattended-upgrades does not exist"
+
+    - name: Read 50unattended-upgrades
+      ansible.builtin.slurp:
+        src: /etc/apt/apt.conf.d/50unattended-upgrades
+      register: unattended_content
+
+    - name: Assert security origins are enabled
+      ansible.builtin.assert:
+        that: "'security' in (unattended_content.content | b64decode | lower)"
+        fail_msg: "Security origins not found in 50unattended-upgrades"
+
+    - name: Check unattended-upgrades service
+      ansible.builtin.service_facts:
+
+    - name: Assert unattended-upgrades is enabled
+      ansible.builtin.assert:
+        that: "'unattended-upgrades' in ansible_facts.services"
+        fail_msg: "unattended-upgrades service not found"

@@ -1,0 +1,48 @@
+{{ ansible_managed | comment }}
+{% set monitoring = watchtower.metrics.enabled and (monitoring.enabled | default(false)) %}
+{% if monitoring %}
+networks:
+  monitoring:
+    external: true
+{% endif %}
+
+services:
+  watchtower:
+    image: nickfedor/watchtower
+    container_name: {{ watchtower.container_name }}
+    restart: unless-stopped
+    read_only: true
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.01"
+          memory: 32M
+        limits:
+          cpus: "0.1"
+          memory: 64M
+    networks:
+      - default
+{% if monitoring %}
+      - monitoring
+{% endif %}
+    environment:
+      - "WATCHTOWER_CLEANUP=true"
+      - "WATCHTOWER_INCLUDE_RESTARTING=true"
+      - "WATCHTOWER_INCLUDE_STOPPED=true"
+      - "WATCHTOWER_REVIVE_STOPPED=true"
+      - "WATCHTOWER_SCHEDULE={{ watchtower.config.schedule | default("0 30 4 * * *") }}"
+      - "WATCHTOWER_LABEL_ENABLE=false"
+{% if monitoring %}
+      - "WATCHTOWER_HTTP_API_METRICS=true"
+      - "WATCHTOWER_HTTP_API_TOKEN=public"
+{% endif %}
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+{% if monitoring %}
+    labels:
+      - "prometheus.io/scrape=true"
+      - "prometheus.io/port=8080"
+      - "prometheus.io/path=/v1/metrics"
+{% endif %}

@@ -1,0 +1,11 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    ntp:
+      servers:
+        - time.cloudflare.com
+        - time.google.com
+  roles:
+    - role: ntp

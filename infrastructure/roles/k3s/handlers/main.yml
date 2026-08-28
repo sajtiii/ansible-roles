@@ -1,0 +1,7 @@
+- name: Restart k3s
+  listen: restart k3s
+  ansible.builtin.service:
+    name: "{{ 'k3s-agent' if k3s.role == 'agent' else 'k3s' }}"
+    state: restarted
+  when:
+    - not ansible_check_mode
