@@ -1,0 +1,49 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Assert tailscale is installed
+      ansible.builtin.assert:
+        that: "'tailscale' in ansible_facts.packages"
+        fail_msg: "tailscale is not installed"
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Assert tailscaled is enabled and running
+      ansible.builtin.assert:
+        that:
+          - "'tailscaled.service' in ansible_facts.services"
+          - ansible_facts.services['tailscaled.service'].state == 'running'
+          - ansible_facts.services['tailscaled.service'].status == 'enabled'
+        fail_msg: "tailscaled is not enabled and running"
+
+    - name: Check exit node sysctl config
+      ansible.builtin.stat:
+        path: /etc/sysctl.d/99-tailscale.conf
+      register: ts_sysctl
+
+    - name: Assert forwarding sysctl config exists (exit_node: true)
+      ansible.builtin.assert:
+        that:
+          - ts_sysctl.stat.exists
+          - ts_sysctl.stat.mode == '0644'
+        fail_msg: "/etc/sysctl.d/99-tailscale.conf missing or has wrong permissions"
+
+    - name: Read tailscale backend state
+      ansible.builtin.command:
+        cmd: tailscale status --json
+      register: ts_status
+      changed_when: false
+      failed_when: false
+
+    - name: Assert node is not logged in (no auth key provided)
+      ansible.builtin.assert:
+        that: (ts_status.stdout | from_json).BackendState != 'Running'
+        fail_msg: "tailscale unexpectedly logged in without an auth key"
+      when: ts_status.rc == 0

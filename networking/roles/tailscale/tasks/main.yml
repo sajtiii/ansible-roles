@@ -1,0 +1,119 @@
+- name: Install tailscale (Debian)
+  when:
+    - tailscale.install
+    - ansible_os_family == "Debian"
+  block:
+    - name: Ensure keyrings directory exists
+      ansible.builtin.file:
+        path: /usr/share/keyrings
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+    - name: Add Tailscale apt signing key
+      ansible.builtin.get_url:
+        url: "https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}/{{ ansible_distribution_release }}.noarmor.gpg"
+        dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+        owner: root
+        group: root
+        mode: "0644"
+      check_mode: false
+    - name: Add Tailscale apt repository
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/tailscale.list
+        content: >-
+          deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg]
+          https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} main
+        owner: root
+        group: root
+        mode: "0644"
+    - name: Install tailscale package
+      ansible.builtin.apt:
+        name: tailscale
+        state: latest
+        update_cache: true
+- name: Install tailscale (openSUSE MicroOS)
+  ansible.builtin.command:
+    cmd: transactional-update --non-interactive pkg install tailscale
+  register: _ts_tu_result
+  changed_when: "'Nothing to do' not in _ts_tu_result.stdout"
+  when:
+    - tailscale.install
+    - ansible_distribution == "openSUSE MicroOS"
+- name: Configure IP forwarding for exit node
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-tailscale.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      {{ ansible_managed | comment }}
+      net.ipv4.ip_forward = 1
+      net.ipv6.conf.all.forwarding = 1
+  when: tailscale.exit_node
+  notify: Reload sysctl
+- name: Remove IP forwarding config when not an exit node
+  ansible.builtin.file:
+    path: /etc/sysctl.d/99-tailscale.conf
+    state: absent
+  when: not tailscale.exit_node
+- name: Flush handlers so forwarding is active before tailscale up
+  ansible.builtin.meta: flush_handlers
+- name: Enable and start tailscaled
+  ansible.builtin.service:
+    name: tailscaled
+    enabled: true
+    state: started
+- name: Read current tailscale preferences
+  ansible.builtin.command:
+    cmd: tailscale debug prefs
+  register: _ts_prefs_raw
+  changed_when: false
+  failed_when: false
+  check_mode: false
+- name: Read current tailscale backend state
+  ansible.builtin.command:
+    cmd: tailscale status --json
+  register: _ts_status_raw
+  changed_when: false
+  failed_when: false
+  check_mode: false
+- name: Derive current tailscale state
+  ansible.builtin.set_fact:
+    _ts_prefs: "{{ (_ts_prefs_raw.stdout | default('{}')) | from_json if _ts_prefs_raw.rc == 0 else {} }}"
+    _ts_status: "{{ (_ts_status_raw.stdout | default('{}')) | from_json if _ts_status_raw.rc == 0 else {} }}"
+- name: Derive desired vs actual tailscale settings
+  ansible.builtin.set_fact:
+    _ts_logged_in: "{{ (_ts_status.BackendState | default('')) == 'Running' }}"
+    _ts_url_matches: "{{ (_ts_prefs.ControlURL | default('')) | regex_replace('/$', '') == (tailscale.login_url | regex_replace('/$', '')) }}"
+    _ts_is_exit_node: "{{ '0.0.0.0/0' in (_ts_prefs.AdvertiseRoutes | default([]) or []) }}"
+- name: Skip login because no auth key was provided
+  ansible.builtin.debug:
+    msg: "tailscale is not logged in and tailscale.auth_key is empty; skipping tailscale up"
+  when:
+    - not _ts_logged_in or not _ts_url_matches
+    - not tailscale.auth_key
+- name: Log in to tailscale
+  ansible.builtin.command:
+    argv: >-
+      {{
+        ['tailscale', 'up',
+         '--login-server=' ~ tailscale.login_url,
+         '--auth-key=' ~ tailscale.auth_key,
+         '--advertise-exit-node=' ~ (tailscale.exit_node | bool | lower),
+         '--reset']
+        + (['--force-reauth'] if (_ts_logged_in and not _ts_url_matches) else [])
+      }}
+  when:
+    - not _ts_logged_in or not _ts_url_matches
+    - tailscale.auth_key
+  no_log: true
+  changed_when: true
+- name: Update exit node advertisement
+  ansible.builtin.command:
+    cmd: "tailscale set --advertise-exit-node={{ tailscale.exit_node | bool | lower }}"
+  when:
+    - _ts_logged_in
+    - _ts_url_matches
+    - _ts_is_exit_node != (tailscale.exit_node | bool)
+  changed_when: true

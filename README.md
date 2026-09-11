@@ -7,7 +7,7 @@ Ansible Galaxy collections for provisioning and managing Debian-based infrastruc
 | Collection | Description |
 | --- | --- |
 | `sajtii.system` | Base system setup: hostname, users, NTP, SSH, upgrades |
-| `sajtii.networking` | Network configuration: nftables firewall |
+| `sajtii.networking` | Network configuration: nftables firewall, VLANs, WireGuard, Tailscale |
 | `sajtii.infrastructure` | Docker and k3s installation |
 | `sajtii.monitoring` | Prometheus node-exporter and cAdvisor |
 | `sajtii.ops` | Backup (restic) and GitOps automation |

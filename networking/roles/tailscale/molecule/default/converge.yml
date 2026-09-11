@@ -1,0 +1,12 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    tailscale:
+      install: true
+      login_url: "https://controlplane.tailscale.com"
+      auth_key: ""
+      exit_node: true
+  roles:
+    - role: tailscale
