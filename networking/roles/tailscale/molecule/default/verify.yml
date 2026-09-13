@@ -28,7 +28,7 @@
         path: /etc/sysctl.d/99-tailscale.conf
       register: ts_sysctl
 
-    - name: Assert forwarding sysctl config exists (exit_node: true)
+    - name: "Assert forwarding sysctl config exists (exit_node: true)"
       ansible.builtin.assert:
         that:
           - ts_sysctl.stat.exists

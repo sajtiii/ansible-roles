@@ -15,6 +15,7 @@ mock_roles:
   - normalize
   - ntp
   - sshd
+  - tailscale
   - traefik
   - upgrade
   - users
