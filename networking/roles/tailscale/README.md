@@ -19,7 +19,8 @@ tailscale:
 - **Install** — adds the official Tailscale apt repository and keyring, then installs `tailscale`. On openSUSE MicroOS the package is installed via `transactional-update`.
 - **IP forwarding** — when `exit_node: true` or `advertise_routes` is non-empty, `/etc/sysctl.d/99-tailscale.conf` enables IPv4 and IPv6 forwarding and `sysctl --system` is reloaded. The file is removed when neither is set.
 - **Login** — only runs `tailscale up` when the node is logged out (backend state is not `Running`). An already logged-in node is never re-authenticated by this role. The command is run with `no_log` so the key is not printed.
-- **Settings** — once logged in, `exit_node` and `advertise_routes` are each applied via a shared, reusable task (`tasks/_tailscale_set.yml`) that takes just `key` and `value`: it reads the current value with `tailscale get <key>` and only runs `tailscale set --<key>=<value>` when it differs. `tailscale get` is read-only, so it always runs — including in `--check` mode, where a pending difference is reported via `debug` instead of being applied. Adding another `tailscale set`-managed option is one more `include_tasks: _tailscale_set.yml` block.
+- **Settings** — once logged in, `exit_node` and `advertise_routes` are each applied via a shared, reusable task (`tasks/_tailscale_set.yml`) that takes just `key` and `value`: it reads the current value with `tailscale get <key>` and only runs `tailscale set --<key>=<value>` when it differs.
+  `tailscale get` is read-only, so it always runs — including in `--check` mode, where a pending difference is reported via `debug` instead of being applied. Adding another `tailscale set`-managed option is one more `include_tasks: _tailscale_set.yml` block.
 - If the node is not logged in and `auth_key` is empty, the login step is skipped with a message so the role can still install and start the daemon.
 
 ## Notes
