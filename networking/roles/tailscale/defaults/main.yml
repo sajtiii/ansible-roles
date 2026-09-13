@@ -1,0 +1,13 @@
+tailscale:
+  install: true
+  # Control server URL. Default is the hosted Tailscale coordination server;
+  # point this at your Headscale instance for self-hosted setups.
+  login_url: "https://controlplane.tailscale.com"
+  # Pre-auth key used for the initial `tailscale up`. Never store in plain text;
+  # reference a vault variable instead, e.g. "{{ vault_tailscale_auth_key }}".
+  # If empty and the node is not yet logged in, the login step is skipped.
+  auth_key: ""
+  # Advertise this node as an exit node. Enables IPv4/IPv6 forwarding via sysctl.
+  exit_node: false
+  # Subnet routes to advertise, e.g. ["10.0.0.0/24"]. Enables IPv4/IPv6 forwarding via sysctl.
+  advertise_routes: []
