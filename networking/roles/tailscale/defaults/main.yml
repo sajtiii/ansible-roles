@@ -9,3 +9,5 @@ tailscale:
   auth_key: ""
   # Advertise this node as an exit node. Enables IPv4/IPv6 forwarding via sysctl.
   exit_node: false
+  # Subnet routes to advertise, e.g. ["10.0.0.0/24"]. Enables IPv4/IPv6 forwarding via sysctl.
+  advertise_routes: []

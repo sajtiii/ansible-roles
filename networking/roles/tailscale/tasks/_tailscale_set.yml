@@ -1,0 +1,22 @@
+- name: "Get current tailscale option: {{ key }}"
+  ansible.builtin.command:
+    cmd: "tailscale get {{ key }}"
+  register: _ts_get
+  changed_when: false
+  check_mode: false
+  when: _ts_logged_in
+- name: "Show pending tailscale change: {{ key }}"
+  ansible.builtin.debug:
+    msg: "{{ key }}: {{ _ts_get.stdout | trim }} -> {{ value }}"
+  changed_when: true
+  when:
+    - ansible_check_mode
+    - _ts_logged_in
+    - (_ts_get.stdout | trim) != (value | string)
+- name: "Set tailscale option: {{ key }}"
+  ansible.builtin.command:
+    cmd: "tailscale set --{{ key }}={{ value }}"
+  when:
+    - _ts_logged_in
+    - (_ts_get.stdout | trim) != (value | string)
+  changed_when: true
