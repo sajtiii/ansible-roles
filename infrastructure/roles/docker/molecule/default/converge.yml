@@ -6,5 +6,9 @@
     docker:
       metrics:
         enabled: false
+      autoheal:
+        enabled: true
+        schedule: "*/2 * * * *"
+        include_exited: true
   roles:
     - role: docker

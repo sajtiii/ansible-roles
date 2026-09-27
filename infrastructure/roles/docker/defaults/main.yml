@@ -3,3 +3,7 @@ docker:
     enabled: true
     host: 0.0.0.0
     port: 9323
+  autoheal:
+    enabled: true
+    schedule: "*/5 * * * *"
+    include_exited: true

@@ -57,6 +57,22 @@
     src: dx-completion.bash
     dest: /etc/bash_completion.d/dx-completion.bash
     mode: "0644"
+- name: Add docker autoheal script
+  ansible.builtin.copy:
+    src: docker-autoheal.sh
+    dest: /usr/local/bin/docker-autoheal
+    mode: "0755"
+- name: Add docker autoheal to cron.d
+  when: docker.autoheal.enabled
+  ansible.builtin.copy:
+    dest: /etc/cron.d/docker-autoheal
+    content: "{{ docker.autoheal.schedule }} root /usr/local/bin/docker-autoheal{{ ' --include-exited' if docker.autoheal.include_exited else '' }} 2>&1 | logger -t docker-autoheal\n"
+    mode: "0644"
+- name: Remove docker autoheal from cron.d
+  when: not docker.autoheal.enabled
+  ansible.builtin.file:
+    path: /etc/cron.d/docker-autoheal
+    state: absent
 - name: Copy docker compose service to systemd
   ansible.builtin.copy:
     src: docker-compose@.service

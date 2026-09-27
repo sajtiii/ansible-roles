@@ -29,6 +29,16 @@
           - dx_util.stat.executable
         fail_msg: "/usr/local/bin/dx is missing or not executable"
 
+    - name: Read docker autoheal cron file
+      ansible.builtin.slurp:
+        path: /etc/cron.d/docker-autoheal
+      register: autoheal_cron
+
+    - name: Assert docker autoheal cron runs with exited containers included
+      ansible.builtin.assert:
+        that: "'/usr/local/bin/docker-autoheal --include-exited' in (autoheal_cron.content | b64decode)"
+        fail_msg: "/etc/cron.d/docker-autoheal is missing or wrong"
+
     - name: Check docker daemon config
       ansible.builtin.stat:
         path: /etc/docker/daemon.json
