@@ -22,7 +22,7 @@
 - name: Add Docker Repository
   ansible.builtin.copy:
     dest: /etc/apt/sources.list.d/docker.list
-    content: "deb [arch={{ deb_architecture.stdout }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+    content: "deb [arch={{ deb_architecture.stdout }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_facts.distribution_release }} stable"
     mode: "0644"
 - name: Ensure Docker is installed
   ansible.builtin.package:

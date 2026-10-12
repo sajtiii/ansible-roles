@@ -58,7 +58,7 @@
       set -o pipefail;
       k3s kubectl get nodes
       -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{range .status.addresses[?(@.type=="InternalIP")]}{.address}{end}{"\n"}{end}'
-      | awk -F'\t' '$2 == "{{ ansible_default_ipv4.address }}" {print $1}'
+      | awk -F'\t' '$2 == "{{ ansible_facts.default_ipv4.address }}" {print $1}'
     executable: /bin/bash
   register: __k3s_node_name
   when: __k3s_installed.stat.exists

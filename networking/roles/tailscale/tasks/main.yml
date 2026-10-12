@@ -1,7 +1,7 @@
 - name: Install tailscale (Debian)
   when:
     - tailscale.install
-    - ansible_os_family == "Debian"
+    - ansible_facts.os_family == "Debian"
   block:
     - name: Ensure keyrings directory exists
       ansible.builtin.file:
@@ -12,7 +12,7 @@
         mode: "0755"
     - name: Add Tailscale apt signing key
       ansible.builtin.get_url:
-        url: "https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}/{{ ansible_distribution_release }}.noarmor.gpg"
+        url: "https://pkgs.tailscale.com/stable/{{ ansible_facts.distribution | lower }}/{{ ansible_facts.distribution_release }}.noarmor.gpg"
         dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
         owner: root
         group: root
@@ -23,7 +23,7 @@
         dest: /etc/apt/sources.list.d/tailscale.list
         content: >-
           deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg]
-          https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} main
+          https://pkgs.tailscale.com/stable/{{ ansible_facts.distribution | lower }} {{ ansible_facts.distribution_release }} main
         owner: root
         group: root
         mode: "0644"
@@ -39,7 +39,7 @@
   changed_when: "'Nothing to do' not in _ts_tu_result.stdout"
   when:
     - tailscale.install
-    - ansible_distribution == "openSUSE MicroOS"
+    - ansible_facts.distribution == "openSUSE MicroOS"
 - name: Configure IP forwarding for exit node or subnet routes
   ansible.builtin.copy:
     dest: /etc/sysctl.d/99-tailscale.conf

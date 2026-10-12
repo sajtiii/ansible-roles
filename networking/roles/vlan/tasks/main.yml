@@ -32,7 +32,7 @@
     _vlans_desired: >-
       {%- set ns = namespace(result={}) -%}
       {%- for item in vlans | dict2items -%}
-        {%- set base_iface = item.value.interface | default(ansible_default_ipv4.interface) -%}
+        {%- set base_iface = item.value.interface | default(ansible_facts.default_ipv4.interface) -%}
         {%- set iface_name = item.value.name | default(base_iface ~ '.' ~ (item.key | string)) -%}
         {%- set ns.result = ns.result | combine({iface_name: base_iface}) -%}
       {%- endfor -%}
@@ -64,10 +64,10 @@
 - name: Create dhclient config files for DHCP VLANs
   ansible.builtin.template:
     src: dhclient.conf.j2
-    dest: "/etc/dhcp/dhclient-{{ item.value.name | default((item.value.interface | default(ansible_default_ipv4.interface)) ~ '.' ~ (item.key | string)) }}.conf"
+    dest: "/etc/dhcp/dhclient-{{ item.value.name | default((item.value.interface | default(ansible_facts.default_ipv4.interface)) ~ '.' ~ (item.key | string)) }}.conf"
     mode: '0644'
   vars:
-    iface_name: "{{ item.value.name | default((item.value.interface | default(ansible_default_ipv4.interface)) ~ '.' ~ (item.key | string)) }}"
+    iface_name: "{{ item.value.name | default((item.value.interface | default(ansible_facts.default_ipv4.interface)) ~ '.' ~ (item.key | string)) }}"
     dhcp_default_route: "{{ item.value.dhcp_default_route | default(false) }}"
   loop: "{{ vlans | dict2items }}"
   when: item.value.dhcp | default(false)
@@ -79,8 +79,8 @@
     mode: '0644'
   vars:
     vlan_id: "{{ item.key }}"
-    iface_name: "{{ item.value.name | default((item.value.interface | default(ansible_default_ipv4.interface)) ~ '.' ~ (item.key | string)) }}"
-    base_iface: "{{ item.value.interface | default(ansible_default_ipv4.interface) }}"
+    iface_name: "{{ item.value.name | default((item.value.interface | default(ansible_facts.default_ipv4.interface)) ~ '.' ~ (item.key | string)) }}"
+    base_iface: "{{ item.value.interface | default(ansible_facts.default_ipv4.interface) }}"
     ipv4_cidr: "{{ item.value.ipv4_cidr | default('') }}"
     ipv6_cidr: "{{ item.value.ipv6_cidr | default('') }}"
     dhcp: "{{ item.value.dhcp | default(false) }}"

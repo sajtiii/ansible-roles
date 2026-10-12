@@ -5,7 +5,7 @@
     update_cache: true
   when:
     - wireguard.install
-    - ansible_os_family == "Debian"
+    - ansible_facts.os_family == "Debian"
 - name: Install wireguard-tools (openSUSE MicroOS)
   ansible.builtin.command:
     cmd: transactional-update --non-interactive pkg install wireguard-tools
@@ -13,7 +13,7 @@
   changed_when: "'Nothing to do' not in _wg_tu_result.stdout"
   when:
     - wireguard.install
-    - ansible_distribution == "openSUSE MicroOS"
+    - ansible_facts.distribution == "openSUSE MicroOS"
 - name: Ensure wireguard directory exists
   ansible.builtin.file:
     path: /etc/wireguard
