@@ -23,8 +23,56 @@
   ansible.posix.sysctl:
     name: vm.swappiness
     value: "{{ system.swappiness | default(10) }}"
+    sysctl_file: /etc/sysctl.d/99-normalize.conf
     state: present
     reload: true
+- name: Reboot on kernel panic and oops, raise inotify limits
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-normalize.conf
+    state: present
+    reload: true
+  loop:
+    - { name: kernel.panic, value: "10" }
+    - { name: kernel.panic_on_oops, value: "1" }
+    - { name: fs.inotify.max_user_watches, value: "524288" }
+    - { name: fs.inotify.max_user_instances, value: "512" }
+- name: Panic on soft and hard lockups (bare metal only)
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: "1"
+    sysctl_file: /etc/sysctl.d/99-normalize.conf
+    state: present
+    reload: true
+  loop:
+    - kernel.softlockup_panic
+    - kernel.hardlockup_panic
+  when: ansible_virtualization_role != "guest"
+- name: Ensure systemd system.conf.d exists
+  ansible.builtin.file:
+    path: /etc/systemd/system.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+- name: Configure systemd hardware watchdog
+  ansible.builtin.copy:
+    dest: /etc/systemd/system.conf.d/watchdog.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Manager]
+      RuntimeWatchdogSec={{ system.watchdog | default('30s') }}
+      RebootWatchdogSec=10min
+  register: watchdog_conf
+- name: Reload systemd manager configuration
+  ansible.builtin.systemd_service:
+    daemon_reexec: true
+  when:
+    - watchdog_conf.changed
+    - not ansible_check_mode
 - name: Ensure base packages are installed
   ansible.builtin.package:
     name:
