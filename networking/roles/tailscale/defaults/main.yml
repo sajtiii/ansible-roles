@@ -11,3 +11,6 @@ tailscale:
   exit_node: false
   # Subnet routes to advertise, e.g. ["10.0.0.0/24"]. Enables IPv4/IPv6 forwarding via sysctl.
   advertise_routes: []
+  # Accept the tailnet's DNS configuration (MagicDNS, global/split nameservers).
+  # Set false on hosts that must resolve LAN-only names via their local resolver.
+  accept_dns: true

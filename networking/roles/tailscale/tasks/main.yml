@@ -112,3 +112,8 @@
   vars:
     key: advertise-routes
     value: "{{ tailscale.advertise_routes | join(',') }}"
+- name: Configure tailnet DNS acceptance
+  ansible.builtin.include_tasks: _tailscale_set.yml
+  vars:
+    key: accept-dns
+    value: "{{ tailscale.accept_dns | bool | lower }}"
